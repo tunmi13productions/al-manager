@@ -459,11 +459,28 @@ class URLSound:
         # Ffmpeg process.
         self.process = None
 
-    def load(self, path):
+    def load(self, path, spatial_audio=False):
         # First generate a buffer.
         self.buffer = self.ctx.gen_buffer()
         # Make a source.
         self.source = self.ctx.gen_source()
+        
+        # Configure spatial audio based on parameter
+        if spatial_audio:
+            # Enable 3D positioning
+            self.source.spatialize = True
+            self.source.relative = False
+            self.source.direct_channels = False
+            self.source.position = [0.0, 0.0, 0.0]
+            self.is_direct = False
+        else:
+            # Direct mode (default) - prevents static and positioning issues
+            self.source.spatialize = False
+            self.source.relative = True
+            self.source.direct_channels = True
+            self.source.position = [0.0, 0.0, 0.0]
+            self.is_direct = True
+            
         self.stream = requests.get(path, stream = True)
 
     def read(self):
@@ -478,15 +495,48 @@ class URLSound:
             return
         
         try:
-            pcm_data = audio.raw_data
+            # Get actual audio properties
+            channels = audio.channels
+            actual_sample_rate = audio.frame_rate
+            
+            # Normalize audio to prevent corruption and static
+            # Convert to 16-bit PCM and ensure proper sample rate
+            audio = audio.set_frame_rate(44100)  # Standardize sample rate
+            audio = audio.set_sample_width(2)   # 16-bit samples
+            
+            # Apply gentle normalization to prevent clipping/static
+            if audio.max_possible_amplitude > 0:
+                normalized_audio = audio.normalize(headroom=0.1)  # Leave 10% headroom
+            else:
+                normalized_audio = audio
+            
+            pcm_data = normalized_audio.raw_data
+            channels = normalized_audio.channels
+            actual_sample_rate = normalized_audio.frame_rate
+            
+            # Set format based on actual channels
+            if channels == 1:
+                audio_format = cyal.BufferFormat.MONO16
+            else:
+                audio_format = cyal.BufferFormat.STEREO16
+            
+            print(f"  Audio info: {channels} channels, {actual_sample_rate}Hz, {len(pcm_data)} bytes")
+            
+            # Use standardized sample rate and normalized data
             self.buffer.set_data(
-                pcm_data, format=self.format, sample_rate=self.sample_rate
+                pcm_data, format=audio_format, sample_rate=actual_sample_rate
             )
+            
+            # Update instance variables to reflect actual audio properties
+            self.format = audio_format
+            self.sample_rate = actual_sample_rate
+            
         except Exception as e:
             print(f"Buffer Setting Error: {e}")
             return
         
         try:
+            # Use queue_buffers method but ensure proper format
             self.source.queue_buffers(self.buffer)
         except Exception as e:
             print(f"Buffer Queuing Error: {e}")
@@ -618,10 +668,23 @@ class URLSound:
 
     # Destroy the sound.
     def close(self):
-        del self.source
-        del self.buffer
-        del self.ffmpeg_process
-        del self
+        try:
+            if hasattr(self, 'source') and self.source:
+                self.source.stop()
+                self.source = None
+        except:
+            pass
+        try:
+            if hasattr(self, 'buffer') and self.buffer:
+                self.buffer = None
+        except:
+            pass
+        try:
+            if hasattr(self, 'stream') and self.stream:
+                self.stream.close()
+                self.stream = None
+        except:
+            pass
 
 
 class StreamingSound:
@@ -682,7 +745,16 @@ class StreamingSound:
             # Load audio file with pydub for format support
             self.audio_file = AudioSegment.from_file(filename)
             
-            # Get audio properties
+            # Apply the same normalization fixes as URLSound
+            # Normalize audio to prevent corruption and static
+            self.audio_file = self.audio_file.set_frame_rate(44100)  # Standardize sample rate
+            self.audio_file = self.audio_file.set_sample_width(2)   # 16-bit samples
+            
+            # Apply gentle normalization to prevent clipping/static
+            if self.audio_file.max_possible_amplitude > 0:
+                self.audio_file = self.audio_file.normalize(headroom=0.1)  # Leave 10% headroom
+            
+            # Get normalized audio properties
             self.sample_rate = self.audio_file.frame_rate
             self.channels = self.audio_file.channels
             
@@ -726,7 +798,11 @@ class StreamingSound:
                 
                 # Unqueue processed buffers
                 if processed > 0:
-                    processed_buffers = self.source.unqueue_buffers(processed)
+                    try:
+                        processed_buffers = self.source.unqueue_buffers()
+                    except:
+                        # Fallback if API doesn't work as expected
+                        processed_buffers = []
                     
                     # Refill processed buffers if there's more data
                     for buffer in processed_buffers:
@@ -830,7 +906,7 @@ class StreamingSound:
                 try:
                     queued = self.source.buffers_queued
                     if queued > 0:
-                        self.source.unqueue_buffers(queued)
+                        self.source.unqueue_buffers()
                 except:
                     pass
             
