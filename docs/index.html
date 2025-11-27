@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AL Manager Documentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .nav-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .nav-card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .nav-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .nav-card h3 {
+            color: #667eea;
+            margin-bottom: 0.5rem;
+            font-size: 1.3rem;
+        }
+
+        .nav-card p {
+            color: #666;
+            margin-bottom: 1rem;
+        }
+
+        .features {
+            list-style: none;
+        }
+
+        .features li {
+            padding: 0.2rem 0;
+            color: #777;
+            font-size: 0.9rem;
+        }
+
+        .features li:before {
+            content: "• ";
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .quick-start {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .quick-start h2 {
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        code {
+            background-color: #f8f9fa;
+            color: #e83e8c;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-size: 0.9rem;
+        }
+
+        pre {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+            padding: 1rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        pre code {
+            background: none;
+            color: #333;
+            padding: 0;
+        }
+
+        footer {
+            text-align: center;
+            padding: 2rem 0;
+            color: #777;
+            border-top: 1px solid #eee;
+            margin-top: 2rem;
+        }
+
+        .badge {
+            background: #667eea;
+            color: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin-left: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>AL Manager Documentation</h1>
+            <p class="subtitle">Enhanced OpenAL Audio Library for Python</p>
+        </header>
+
+        <div class="nav-grid">
+            <a href="manager.html" class="nav-card">
+                <h3>Manager Class <span class="badge">Core</span></h3>
+                <p>Main audio manager for sound playback, effects, and 3D positioning</p>
+                <ul class="features">
+                    <li>Basic and positioned sound playback</li>
+                    <li>Global effects and filters</li>
+                    <li>Room acoustics simulation</li>
+                    <li>Listener management</li>
+                </ul>
+            </a>
+
+            <a href="sound.html" class="nav-card">
+                <h3>Sound Classes <span class="badge">Audio</span></h3>
+                <p>Individual sound management and streaming capabilities</p>
+                <ul class="features">
+                    <li>Basic Sound class</li>
+                    <li>Streaming Sound for large files</li>
+                    <li>URL Sound for remote audio</li>
+                    <li>Effect and filter application</li>
+                </ul>
+            </a>
+
+            <a href="effects.html" class="nav-card">
+                <h3>Effects System <span class="badge">Audio</span></h3>
+                <p>Comprehensive audio effects and filters</p>
+                <ul class="features">
+                    <li>Reverb, distortion, echo, chorus</li>
+                    <li>Equalizer, compressor, pitch shift</li>
+                    <li>Low/high/band-pass filters</li>
+                    <li>Pre-defined presets</li>
+                </ul>
+            </a>
+
+            <a href="sound-group.html" class="nav-card">
+                <h3>Sound Groups <span class="badge">Game</span></h3>
+                <p>Entity-based sound management for games</p>
+                <ul class="features">
+                    <li>Multi-sound entity management</li>
+                    <li>Automatic position tracking</li>
+                    <li>Sound variations and randomization</li>
+                    <li>State-based audio control</li>
+                </ul>
+            </a>
+
+            <a href="sound-pool.html" class="nav-card">
+                <h3>Sound Pool <span class="badge">Memory</span></h3>
+                <p>Efficient oneshot sound management</p>
+                <ul class="features">
+                    <li>Automatic cleanup system</li>
+                    <li>Memory optimization</li>
+                    <li>Concurrent sound limits</li>
+                    <li>Performance statistics</li>
+                </ul>
+            </a>
+
+            <a href="utilities.html" class="nav-card">
+                <h3>Utilities <span class="badge">Helper</span></h3>
+                <p>Helper functions and coordinate conversion</p>
+                <ul class="features">
+                    <li>Coordinate system conversion</li>
+                    <li>EFX manager</li>
+                    <li>Orientation calculations</li>
+                    <li>Audio format support</li>
+                </ul>
+            </a>
+        </div>
+
+        <div class="quick-start">
+            <h2>Quick Start Example</h2>
+            <p>Get started with AL Manager in just a few lines of code:</p>
+            <pre><code>from al_manager import Manager
+
+# Create audio manager
+manager = Manager()
+
+# Play a simple sound
+sound = manager.play("audio.ogg", volume=0.8)
+
+# Play a positioned sound with effects
+positioned_sound = manager.play_p("footstep.ogg", x=5, y=0, z=10)
+positioned_sound.add_effect('reverb', preset='hall')
+
+# Apply environmental effects
+manager.apply_room_acoustics("auditorium")
+
+# Clean up
+manager.destroy_all()</code></pre>
+        </div>
+
+        <div class="quick-start">
+            <h2>Key Features</h2>
+            <ul class="features">
+                <li><strong>3D Audio:</strong> Positioned sounds with distance attenuation and environmental effects</li>
+                <li><strong>Rich Effects:</strong> Professional-grade audio effects including reverb, distortion, echo, and more</li>
+                <li><strong>Game Integration:</strong> Sound groups and automatic position tracking for game entities</li>
+                <li><strong>Memory Efficient:</strong> Automatic cleanup, sound pooling, and optimized resource management</li>
+                <li><strong>Multi-Format:</strong> Support for OGG, WAV, MP3, and streaming from URLs</li>
+                <li><strong>Easy to Use:</strong> Simple API with sensible defaults and powerful customization</li>
+            </ul>
+        </div>
+
+        <footer>
+            <p>AL Manager Documentation - Enhanced OpenAL Audio Library for Python</p>
+            <p>Built on top of cyal (Cython OpenAL) with comprehensive effects and 3D audio support</p>
+        </footer>
+    </div>
+</body>
+</html>

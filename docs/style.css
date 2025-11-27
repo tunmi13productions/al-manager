@@ -1,0 +1,391 @@
+/* AL Manager Documentation Styles */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f8f9fa;
+}
+
+/* Sidebar Navigation */
+.sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 250px;
+    height: 100vh;
+    background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+    padding: 20px 0;
+    overflow-y: auto;
+    z-index: 1000;
+}
+
+.nav-header h3 {
+    color: white;
+    text-align: center;
+    padding: 0 20px;
+    margin-bottom: 30px;
+    font-size: 1.3rem;
+}
+
+.nav-header a {
+    color: white;
+    text-decoration: none;
+}
+
+.nav-links {
+    list-style: none;
+}
+
+.nav-links li {
+    margin-bottom: 5px;
+}
+
+.nav-links a {
+    display: block;
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    padding: 12px 20px;
+    transition: all 0.3s ease;
+    border-left: 3px solid transparent;
+}
+
+.nav-links a:hover {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-left-color: white;
+}
+
+.nav-links a.active {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.15);
+    border-left-color: white;
+}
+
+/* Main Content */
+.content {
+    margin-left: 250px;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 40px 30px;
+}
+
+h1 {
+    color: #667eea;
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    border-bottom: 3px solid #667eea;
+    padding-bottom: 10px;
+}
+
+.lead {
+    font-size: 1.2rem;
+    color: #666;
+    margin-bottom: 30px;
+}
+
+.section {
+    background: white;
+    border-radius: 10px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.section h2 {
+    color: #667eea;
+    margin-bottom: 20px;
+    font-size: 1.8rem;
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 10px;
+}
+
+.section h3 {
+    color: #764ba2;
+    margin-bottom: 15px;
+    font-size: 1.4rem;
+}
+
+.section h4 {
+    color: #667eea;
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+}
+
+/* Method Documentation */
+.method {
+    border-left: 4px solid #667eea;
+    padding: 20px;
+    margin: 20px 0;
+    background-color: #f8f9fa;
+    border-radius: 0 8px 8px 0;
+}
+
+.method h3 {
+    color: #667eea;
+    font-family: 'Monaco', 'Consolas', monospace;
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+}
+
+.method h4 {
+    color: #764ba2;
+    font-family: 'Monaco', 'Consolas', monospace;
+    font-size: 1rem;
+    margin-bottom: 8px;
+}
+
+.method-details {
+    margin-top: 15px;
+}
+
+.method-details ul {
+    margin-left: 20px;
+    margin-top: 10px;
+}
+
+.method-details li {
+    margin-bottom: 5px;
+}
+
+.property {
+    border-left: 4px solid #28a745;
+    padding: 15px;
+    margin: 15px 0;
+    background-color: #f8fff9;
+    border-radius: 0 8px 8px 0;
+}
+
+.property h3 {
+    color: #28a745;
+    font-family: 'Monaco', 'Consolas', monospace;
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+}
+
+/* Method Grid */
+.method-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.method-grid .method {
+    margin: 0;
+    padding: 15px;
+}
+
+.method-grid .method h4 {
+    margin-bottom: 8px;
+}
+
+/* Code Examples */
+.code-example {
+    margin: 20px 0;
+    background: #f8f9fa;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #e9ecef;
+}
+
+.code-example h4 {
+    background: #667eea;
+    color: white;
+    padding: 10px 15px;
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.code-example pre {
+    margin: 0;
+    padding: 20px;
+    background: #f8f9fa;
+    overflow-x: auto;
+}
+
+code {
+    background-color: #f1f3f4;
+    color: #d63384;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Consolas', monospace;
+    font-size: 0.9rem;
+}
+
+pre code {
+    background: none;
+    color: #333;
+    padding: 0;
+    border-radius: 0;
+}
+
+/* Tables */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+table th,
+table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #e9ecef;
+}
+
+table th {
+    background-color: #f8f9fa;
+    color: #667eea;
+    font-weight: 600;
+}
+
+table tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* Badges */
+.badge {
+    background: #667eea;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    margin-left: 10px;
+}
+
+.badge.core { background: #667eea; }
+.badge.audio { background: #28a745; }
+.badge.game { background: #fd7e14; }
+.badge.memory { background: #6f42c1; }
+.badge.helper { background: #20c997; }
+
+/* Lists */
+ul {
+    margin-left: 20px;
+}
+
+li {
+    margin-bottom: 8px;
+}
+
+/* Links */
+a {
+    color: #667eea;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+    
+    .content {
+        margin-left: 0;
+    }
+    
+    .container {
+        padding: 20px 15px;
+    }
+    
+    h1 {
+        font-size: 2rem;
+    }
+    
+    .method-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Note and Warning boxes */
+.note {
+    background: #e3f2fd;
+    border-left: 4px solid #2196f3;
+    padding: 15px;
+    margin: 15px 0;
+    border-radius: 0 8px 8px 0;
+}
+
+.warning {
+    background: #fff3e0;
+    border-left: 4px solid #ff9800;
+    padding: 15px;
+    margin: 15px 0;
+    border-radius: 0 8px 8px 0;
+}
+
+.note strong,
+.warning strong {
+    color: #667eea;
+}
+
+/* Parameter lists */
+.param-list {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 15px 0;
+}
+
+.param-list h5 {
+    color: #667eea;
+    margin-bottom: 10px;
+    font-size: 1rem;
+}
+
+.param-list ul {
+    margin-left: 0;
+    list-style: none;
+}
+
+.param-list li {
+    margin-bottom: 10px;
+    padding-left: 20px;
+    position: relative;
+}
+
+.param-list li:before {
+    content: "▸";
+    color: #667eea;
+    position: absolute;
+    left: 0;
+}
+
+/* Scroll to top */
+.scroll-top {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    cursor: pointer;
+    display: none;
+    transition: opacity 0.3s ease;
+    z-index: 1000;
+}
+
+.scroll-top:hover {
+    background: #764ba2;
+}

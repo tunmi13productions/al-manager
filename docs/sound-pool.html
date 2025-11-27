@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sound Pool - AL Manager Documentation</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="nav-header">
+            <h3><a href="index.html">AL Manager</a></h3>
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="manager.html">Manager</a></li>
+            <li><a href="sound.html">Sound Classes</a></li>
+            <li><a href="effects.html">Effects System</a></li>
+            <li><a href="sound-group.html">Sound Groups</a></li>
+            <li><a href="sound-pool.html" class="active">Sound Pool</a></li>
+            <li><a href="utilities.html">Utilities</a></li>
+        </ul>
+    </nav>
+
+    <div class="content">
+        <div class="container">
+            <h1>Sound Pool</h1>
+            <p class="lead">Efficient oneshot sound management with automatic cleanup and memory optimization.</p>
+
+            <section class="section">
+                <h2>Overview</h2>
+                <p>The SoundPool class provides an efficient system for managing oneshot sounds - short audio clips that play once and don't require individual control. This is ideal for UI sounds, gunshots, explosions, and other "fire-and-forget" audio effects.</p>
+                
+                <h3>Key Benefits</h3>
+                <ul>
+                    <li><strong>Memory Efficient:</strong> Automatic cleanup prevents memory leaks from accumulating oneshot sounds</li>
+                    <li><strong>Performance Optimized:</strong> Handles concurrent sound limits and priority management</li>
+                    <li><strong>Simple API:</strong> Fire-and-forget interface requires minimal code</li>
+                    <li><strong>Automatic Management:</strong> No need to track individual sound objects</li>
+                    <li><strong>Statistics:</strong> Built-in monitoring for performance analysis</li>
+                </ul>
+
+                <div class="note">
+                    <strong>Use Case:</strong> Perfect for UI clicks, gunshots, explosions, pickup sounds, and other short effects that don't need individual control after playback starts.
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>SoundPool Class</h2>
+
+                <div class="method">
+                    <h3>__init__(manager)</h3>
+                    <p>Initialize the sound pool with a reference to the AL Manager.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>manager</code> - AL Manager instance for creating sounds</li>
+                        </ul>
+                        <p><strong>Default Settings:</strong></p>
+                        <ul>
+                            <li>Maximum concurrent oneshots: 100</li>
+                            <li>Cleanup threshold: 20</li>
+                            <li>Automatic cleanup enabled</li>
+                        </ul>
+                    </div>
+                    <div class="code-example">
+                        <h4>Basic Setup</h4>
+                        <pre><code>from al_manager import Manager
+from al_manager.sound_pool import SoundPool
+
+manager = Manager()
+sound_pool = SoundPool(manager)
+
+# Or access through manager (recommended)
+manager.play_oneshot("click.ogg")  # Uses built-in sound pool</code></pre>
+                    </div>
+                </div>
+
+                <h3>Core Methods</h3>
+                <div class="method">
+                    <h3>play_oneshot(filename, volume=1.0, pitch=1.0, x=None, y=None, z=None)</h3>
+                    <p>Play a fire-and-forget sound with automatic cleanup when finished. Supports both direct (stereo) and positioned (3D) playback.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>filename</code> (str) - Path to audio file</li>
+                            <li><code>volume</code> (float) - Playback volume (0.0-1.0)</li>
+                            <li><code>pitch</code> (float) - Pitch multiplier (0.5-2.0)</li>
+                            <li><code>x, y, z</code> (float, optional) - 3D position coordinates</li>
+                        </ul>
+                        <p><strong>Returns:</strong> ManagerItem object or None if failed</p>
+                        <p><strong>Note:</strong> If x, y, z are provided, creates a positioned 3D sound. Otherwise creates a direct stereo sound.</p>
+                    </div>
+                </div>
+
+                    <div class="code-example">
+                        <h4>Oneshot Sound Examples</h4>
+                        <pre><code># Simple UI sound (direct/stereo)
+sound_pool.play_oneshot("ui/click.ogg", volume=0.6)
+
+# Gunshot with pitch variation (direct)
+sound_pool.play_oneshot("weapons/gunshot.ogg", pitch=1.1)
+
+# Positioned explosion using optional parameters
+sound_pool.play_oneshot("effects/explosion.ogg", 
+                       volume=1.2, x=10, y=0, z=5)
+
+# Multiple rapid sounds (UI navigation)
+for i in range(5):
+    sound_pool.play_oneshot("ui/beep.ogg", 
+                           pitch=1.0 + i * 0.1)
+
+# More positioned sounds
+sound_pool.play_oneshot("combat/sword_clash.ogg", 
+                       x=enemy.x, y=enemy.y, z=enemy.z)
+sound_pool.play_oneshot("combat/arrow_impact.ogg",
+                       x=target.x, y=target.y, z=target.z, 
+                       volume=0.8)</code></pre>
+                    </div>
+                </div>
+
+                <h3>Memory Management</h3>
+                <div class="method">
+                    <h3>cleanup_finished_sounds()</h3>
+                    <p>Manually trigger cleanup of finished oneshot sounds.</p>
+                    <div class="method-details">
+                        <p><strong>Note:</strong> Usually called automatically, but can be triggered manually for immediate cleanup.</p>
+                        <p><strong>Returns:</strong> Number of sounds cleaned up</p>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>force_cleanup_oldest()</h3>
+                    <p>Force cleanup of oldest sounds when approaching capacity limits.</p>
+                    <div class="method-details">
+                        <p><strong>Note:</strong> Automatically called when max_oneshots limit is reached.</p>
+                        <p><strong>Returns:</strong> Number of sounds forcibly cleaned up</p>
+                    </div>
+                    <div class="code-example">
+                        <h4>Manual Memory Management</h4>
+                        <pre><code># Force immediate cleanup
+cleaned_count = sound_pool.cleanup_finished_sounds()
+print(f"Cleaned up {cleaned_count} finished sounds")
+
+# Get current status
+stats = sound_pool.get_stats()
+print(f"Active: {stats['active_oneshots']}")
+print(f"Total played: {stats['total_oneshots_played']}")
+
+# Force cleanup if getting close to limit
+if stats['active_oneshots'] > 80:
+    sound_pool.force_cleanup_oldest()</code></pre>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>stop_all_oneshots()</h3>
+                    <p>Stop and cleanup all currently playing oneshot sounds.</p>
+                    <div class="method-details">
+                        <p><strong>Use case:</strong> Scene transitions, pause states, or audio reset situations.</p>
+                    </div>
+                </div>
+
+                <h3>Configuration</h3>
+                <div class="method">
+                    <h3>set_max_oneshots(max_count)</h3>
+                    <p>Set the maximum number of concurrent oneshot sounds.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>max_count</code> (int) - Maximum concurrent oneshots (default: 100)</li>
+                        </ul>
+                        <p><strong>Note:</strong> When limit is reached, oldest sounds are automatically cleaned up.</p>
+                    </div>
+                    <div class="code-example">
+                        <h4>Performance Tuning</h4>
+                        <pre><code># For memory-constrained environments
+sound_pool.set_max_oneshots(50)
+
+# For high-action games with many simultaneous effects
+sound_pool.set_max_oneshots(200)
+
+# Mobile/embedded systems
+sound_pool.set_max_oneshots(25)</code></pre>
+                    </div>
+                </div>
+
+                <h3>Statistics and Monitoring</h3>
+                <div class="method">
+                    <h3>get_stats()</h3>
+                    <p>Get detailed statistics about sound pool usage and performance.</p>
+                    <div class="method-details">
+                        <p><strong>Returns:</strong> Dictionary with the following keys:</p>
+                        <ul>
+                            <li><code>active_oneshots</code> - Currently playing oneshots</li>
+                            <li><code>total_oneshots_played</code> - Total oneshots played since initialization</li>
+                            <li><code>max_oneshots</code> - Current maximum limit</li>
+                            <li><code>cleanup_threshold</code> - Cleanup trigger threshold</li>
+                            <li><code>cleanup_count</code> - Number of cleanup operations performed</li>
+                            <li><code>force_cleanup_count</code> - Number of forced cleanups due to capacity</li>
+                        </ul>
+                    </div>
+                    <div class="code-example">
+                        <h4>Performance Monitoring</h4>
+                        <pre><code>def monitor_audio_performance():
+    stats = sound_pool.get_stats()
+    
+    print(f"Audio Pool Status:")
+    print(f"  Active: {stats['active_oneshots']}/{stats['max_oneshots']}")
+    print(f"  Total Played: {stats['total_oneshots_played']}")
+    print(f"  Auto Cleanups: {stats['cleanup_count']}")
+    print(f"  Forced Cleanups: {stats['force_cleanup_count']}")
+    
+    # Warning if too many forced cleanups
+    if stats['force_cleanup_count'] > stats['cleanup_count'] * 0.1:
+        print("WARNING: High forced cleanup rate - consider increasing max_oneshots")
+    
+    # Memory usage estimation
+    active_percentage = (stats['active_oneshots'] / stats['max_oneshots']) * 100
+    print(f"  Pool Usage: {active_percentage:.1f}%")
+
+# Call periodically in debug builds
+monitor_audio_performance()</code></pre>
+                    </div>
+                </div>
+
+                <h3>Properties</h3>
+                <div class="property">
+                    <h3>max_oneshots</h3>
+                    <p>Maximum number of concurrent oneshot sounds (default: 100).</p>
+                </div>
+
+                <div class="property">
+                    <h3>cleanup_threshold</h3>
+                    <p>Number of finished sounds that trigger automatic cleanup (default: 20).</p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Integration with Manager</h2>
+                <p>The Manager class includes a built-in SoundPool accessible through the play_oneshot method.</p>
+
+                <div class="code-example">
+                    <h4>Using Built-in Sound Pool</h4>
+                    <pre><code>from al_manager import Manager
+
+manager = Manager()
+
+# Use built-in sound pool (recommended)
+manager.play_oneshot("click.ogg")
+manager.play_oneshot("explosion.ogg", volume=1.5)
+
+# Access sound pool directly if needed
+pool_stats = manager.sound_pool.get_stats()
+print(f"Active sounds: {pool_stats['active_oneshots']}")
+
+# Configure sound pool
+manager.sound_pool.set_max_oneshots(150)</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Usage Patterns</h2>
+
+                <h3>UI Sound Effects</h3>
+                <div class="code-example">
+                    <h4>User Interface Audio</h4>
+                    <pre><code>class UIAudioManager:
+    def __init__(self, sound_pool):
+        self.pool = sound_pool
+        
+    def button_click(self):
+        self.pool.play_oneshot("ui/click.ogg", volume=0.6)
+    
+    def button_hover(self):
+        self.pool.play_oneshot("ui/hover.ogg", volume=0.4)
+    
+    def menu_open(self):
+        self.pool.play_oneshot("ui/menu_open.ogg", volume=0.8)
+    
+    def error_sound(self):
+        self.pool.play_oneshot("ui/error.ogg", volume=0.7, pitch=0.9)
+    
+    def success_sound(self):
+        self.pool.play_oneshot("ui/success.ogg", volume=0.8, pitch=1.1)
+
+# Usage in UI framework
+ui_audio = UIAudioManager(manager.sound_pool)
+
+# Connect to UI events
+button.on_click = ui_audio.button_click
+button.on_hover = ui_audio.button_hover</code></pre>
+                </div>
+
+                <h3>Combat System Integration</h3>
+                <div class="code-example">
+                    <h4>Combat Audio Effects</h4>
+                    <pre><code>class CombatAudio:
+    def __init__(self, sound_pool):
+        self.pool = sound_pool
+        
+    def weapon_hit(self, weapon_type, position=None):
+        if weapon_type == "sword":
+            self.pool.play_oneshot("combat/sword_hit.ogg", 
+                                 volume=0.8, x=position[0], y=position[1], z=position[2])
+        elif weapon_type == "arrow":
+            self.pool.play_oneshot("combat/arrow_hit.ogg", 
+                                 volume=0.6, pitch=1.1, 
+                                 x=position[0], y=position[1], z=position[2])
+    
+    def spell_cast(self, spell_type, caster_pos):
+        base_volume = 1.0
+        if spell_type == "fireball":
+            self.pool.play_oneshot("spells/fireball_cast.ogg", 
+                                 volume=base_volume, 
+                                 x=caster_pos[0], y=caster_pos[1], z=caster_pos[2])
+        elif spell_type == "heal":
+            self.pool.play_oneshot("spells/heal_cast.ogg", 
+                                 volume=base_volume * 0.7, pitch=1.2)
+    
+    def armor_clank(self, position, intensity=1.0):
+        # Vary pitch based on armor material
+        pitch_variation = random.uniform(0.9, 1.1)
+        self.pool.play_oneshot("combat/armor_clank.ogg", 
+                             volume=0.5 * intensity, 
+                             pitch=pitch_variation,
+                             x=position[0], y=position[1], z=position[2])
+
+# Integration with combat system
+combat_audio = CombatAudio(manager.sound_pool)
+
+def handle_weapon_hit(attacker, target, weapon):
+    target_pos = target.get_position()
+    combat_audio.weapon_hit(weapon.type, target_pos)
+    
+    # Add impact variety
+    if weapon.type == "mace":
+        combat_audio.armor_clank(target_pos, intensity=1.5)</code></pre>
+                </div>
+
+                <h3>Environmental Sound Events</h3>
+                <div class="code-example">
+                    <h4>Dynamic Environment Audio</h4>
+                    <pre><code>class EnvironmentAudio:
+    def __init__(self, sound_pool):
+        self.pool = sound_pool
+        self.last_footstep_time = 0
+        
+    def player_footstep(self, surface_type, player_pos, movement_speed):
+        current_time = time.time()
+        
+        # Timing based on movement speed
+        step_interval = 0.6 / movement_speed
+        if current_time - self.last_footstep_time < step_interval:
+            return
+            
+        # Surface-specific sounds
+        if surface_type == "grass":
+            self.pool.play_oneshot("footsteps/grass.ogg", 
+                                 volume=0.4, pitch=random.uniform(0.95, 1.05))
+        elif surface_type == "stone":
+            self.pool.play_oneshot("footsteps/stone.ogg", 
+                                 volume=0.6, pitch=random.uniform(0.9, 1.1))
+        elif surface_type == "metal":
+            self.pool.play_oneshot("footsteps/metal.ogg", 
+                                 volume=0.8, pitch=random.uniform(1.0, 1.2))
+        
+        self.last_footstep_time = current_time
+    
+    def object_pickup(self, object_type, player_pos):
+        if object_type == "coin":
+            self.pool.play_oneshot("pickups/coin.ogg", 
+                                 volume=0.7, pitch=random.uniform(1.1, 1.3))
+        elif object_type == "potion":
+            self.pool.play_oneshot("pickups/potion.ogg", volume=0.6)
+        elif object_type == "key":
+            self.pool.play_oneshot("pickups/key.ogg", volume=0.8)
+    
+    def door_interaction(self, door_type, door_pos):
+        if door_type == "wood":
+            self.pool.play_oneshot("environment/door_wood.ogg", 
+                                 volume=0.8, x=door_pos[0], y=door_pos[1], z=door_pos[2])
+        elif door_type == "metal":
+            self.pool.play_oneshot("environment/door_metal.ogg", 
+                                 volume=1.0, x=door_pos[0], y=door_pos[1], z=door_pos[2])
+
+# Event-driven environmental audio
+env_audio = EnvironmentAudio(manager.sound_pool)
+
+# Connect to game events
+def on_player_step(surface, position, speed):
+    env_audio.player_footstep(surface, position, speed)
+
+def on_item_pickup(item, player_pos):
+    env_audio.object_pickup(item.type, player_pos)</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Performance Optimization</h2>
+
+                <h3>Memory Management Strategy</h3>
+                <div class="code-example">
+                    <h4>Adaptive Pool Sizing</h4>
+                    <pre><code>class AdaptiveSoundPool:
+                    def __init__(self, base_pool):
+                        self.pool = base_pool
+                        self.performance_history = []
+                        self.adjustment_timer = 0
+                        
+                    def update(self, dt):
+                        self.adjustment_timer += dt
+                        
+                        # Check performance every 5 seconds
+                        if self.adjustment_timer > 5.0:
+                            self.adjust_pool_size()
+                            self.adjustment_timer = 0
+                    
+                    def adjust_pool_size(self):
+                        stats = self.pool.get_stats()
+                        usage_ratio = stats['active_oneshots'] / stats['max_oneshots']
+                        
+                        # Track performance history
+                        self.performance_history.append({
+                            'usage_ratio': usage_ratio,
+                            'force_cleanups': stats['force_cleanup_count']
+                        })
+                        
+                        # Keep last 10 measurements
+                        if len(self.performance_history) > 10:
+                            self.performance_history.pop(0)
+                        
+                        # Adjust based on patterns
+                        avg_usage = sum(h['usage_ratio'] for h in self.performance_history) / len(self.performance_history)
+                        
+                        if avg_usage > 0.8:  # Consistently high usage
+                            new_max = min(stats['max_oneshots'] + 25, 300)
+                            self.pool.set_max_oneshots(new_max)
+                            print(f"Increased pool size to {new_max}")
+                        elif avg_usage < 0.3:  # Consistently low usage
+                            new_max = max(stats['max_oneshots'] - 10, 25)
+                            self.pool.set_max_oneshots(new_max)
+                            print(f"Decreased pool size to {new_max}")
+
+# Usage with adaptive management
+adaptive_pool = AdaptiveSoundPool(manager.sound_pool)
+
+# In game loop
+def game_update(dt):
+    adaptive_pool.update(dt)
+    # ... rest of game logic</code></pre>
+                </div>
+
+                <h3>Priority-Based Sound Management</h3>
+                <div class="code-example">
+                    <h4>Smart Sound Prioritization</h4>
+                    <pre><code>class PrioritySoundPool:
+    def __init__(self, sound_pool):
+        self.pool = sound_pool
+        self.priority_sounds = []
+        
+    def play_oneshot_with_priority(self, filename, priority=1, **kwargs):
+        stats = self.pool.get_stats()
+        
+        # If approaching capacity, only play high priority sounds
+        if stats['active_oneshots'] > stats['max_oneshots'] * 0.9:
+            if priority < 3:  # Skip low priority sounds
+                return False
+                
+        # For very high priority, force cleanup if needed
+        if priority >= 5 and stats['active_oneshots'] >= stats['max_oneshots']:
+            self.pool.force_cleanup_oldest()
+        
+        self.pool.play_oneshot(filename, **kwargs)
+        return True
+    
+    def play_ui_sound(self, filename, **kwargs):
+        return self.play_oneshot_with_priority(filename, priority=2, **kwargs)
+    
+    def play_combat_sound(self, filename, **kwargs):
+        return self.play_oneshot_with_priority(filename, priority=4, **kwargs)
+    
+    def play_critical_sound(self, filename, **kwargs):
+        return self.play_oneshot_with_priority(filename, priority=5, **kwargs)
+    
+    def play_ambient_sound(self, filename, **kwargs):
+        return self.play_oneshot_with_priority(filename, priority=1, **kwargs)
+
+# Usage with priority system
+priority_pool = PrioritySoundPool(manager.sound_pool)
+
+# Different priority levels
+priority_pool.play_ambient_sound("birds.ogg")      # Low priority
+priority_pool.play_ui_sound("click.ogg")           # Medium priority  
+priority_pool.play_combat_sound("explosion.ogg")   # High priority
+priority_pool.play_critical_sound("alarm.ogg")     # Critical priority</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Debugging and Profiling</h2>
+                <div class="code-example">
+                    <h4>Sound Pool Profiler</h4>
+                    <pre><code>class SoundPoolProfiler:
+    def __init__(self, sound_pool):
+        self.pool = sound_pool
+        self.start_time = time.time()
+        self.samples = []
+        
+    def sample(self):
+        stats = self.pool.get_stats()
+        sample_time = time.time() - self.start_time
+        
+        self.samples.append({
+            'time': sample_time,
+            'active': stats['active_oneshots'],
+            'total_played': stats['total_oneshots_played'],
+            'cleanups': stats['cleanup_count'],
+            'force_cleanups': stats['force_cleanup_count']
+        })
+    
+    def generate_report(self):
+        if not self.samples:
+            return "No samples collected"
+        
+        latest = self.samples[-1]
+        first = self.samples[0]
+        
+        duration = latest['time']
+        sounds_played = latest['total_played'] - first['total_played']
+        avg_rate = sounds_played / duration if duration > 0 else 0
+        
+        max_active = max(s['active'] for s in self.samples)
+        avg_active = sum(s['active'] for s in self.samples) / len(self.samples)
+        
+        cleanup_rate = (latest['cleanups'] - first['cleanups']) / duration if duration > 0 else 0
+        force_cleanup_ratio = latest['force_cleanups'] / max(1, latest['cleanups'])
+        
+        report = f"""
+Sound Pool Performance Report
+============================
+Duration: {duration:.1f} seconds
+Total sounds played: {sounds_played}
+Average play rate: {avg_rate:.1f} sounds/second
+
+Active sounds:
+  Maximum: {max_active}
+  Average: {avg_active:.1f}
+  Current: {latest['active']}
+
+Cleanup performance:
+  Cleanup rate: {cleanup_rate:.2f} cleanups/second
+  Force cleanup ratio: {force_cleanup_ratio:.2f}
+  
+Memory efficiency: {'Good' if force_cleanup_ratio < 0.1 else 'Poor - consider increasing pool size'}
+        """
+        
+        return report
+
+# Usage for performance analysis
+profiler = SoundPoolProfiler(manager.sound_pool)
+
+# Sample periodically in game loop
+def game_update(dt):
+    profiler.sample()
+    # ... game logic
+
+# Generate report when needed
+print(profiler.generate_report())</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Best Practices</h2>
+                <ul>
+                    <li><strong>File Optimization:</strong> Use compressed audio formats (OGG) for oneshot sounds to reduce memory usage</li>
+                    <li><strong>Pool Sizing:</strong> Set max_oneshots based on your game's audio intensity and target platform capabilities</li>
+                    <li><strong>Cleanup Monitoring:</strong> Watch for high force cleanup rates - indicates undersized pool</li>
+                    <li><strong>Priority Systems:</strong> Implement priority-based playback for audio overload situations</li>
+                    <li><strong>Platform Tuning:</strong> Adjust pool size for different platforms (mobile vs desktop)</li>
+                    <li><strong>Memory Awareness:</strong> Monitor pool statistics in debug builds to optimize performance</li>
+                    <li><strong>Batching:</strong> Group related oneshots (UI sounds) into categories for better management</li>
+                    <li><strong>Distance Culling:</strong> Don't play positioned oneshots that are too far from the listener</li>
+                </ul>
+
+                <div class="warning">
+                    <strong>Performance Warning:</strong> Playing too many concurrent oneshot sounds can overwhelm the audio system. 
+                    Monitor pool statistics and implement appropriate limits for your target hardware.
+                </div>
+
+                <div class="note">
+                    <strong>Memory Tip:</strong> The sound pool automatically manages memory, but very short sounds (< 0.5 seconds) 
+                    are ideal candidates as they finish and get cleaned up quickly.
+                </div>
+            </section>
+        </div>
+    </div>
+</body>
+</html>

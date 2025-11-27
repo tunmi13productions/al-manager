@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Effects System - AL Manager Documentation</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="nav-header">
+            <h3><a href="index.html">AL Manager</a></h3>
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="manager.html">Manager</a></li>
+            <li><a href="sound.html">Sound Classes</a></li>
+            <li><a href="effects.html" class="active">Effects System</a></li>
+            <li><a href="sound-group.html">Sound Groups</a></li>
+            <li><a href="sound-pool.html">Sound Pool</a></li>
+            <li><a href="utilities.html">Utilities</a></li>
+        </ul>
+    </nav>
+
+    <div class="content">
+        <div class="container">
+            <h1>Effects System</h1>
+            <p class="lead">Comprehensive audio effects and filters for professional-grade audio processing.</p>
+
+            <section class="section">
+                <h2>Overview</h2>
+                <p>AL Manager provides a rich effects system built on OpenAL EFX (Effects Extension). The system includes:</p>
+                <ul>
+                    <li><strong>AudioEffect</strong> - High-level wrapper for complex audio effects</li>
+                    <li><strong>AudioFilter</strong> - Direct audio filtering capabilities</li>
+                    <li><strong>EffectPresets</strong> - Pre-configured effect settings for common scenarios</li>
+                </ul>
+                <p>Effects are processed in real-time by the audio hardware/drivers, providing high-quality audio processing with minimal CPU overhead.</p>
+            </section>
+
+            <section class="section">
+                <h2>AudioEffect Class</h2>
+                <p>The AudioEffect class provides easy access to complex audio effects with intuitive parameters and preset configurations.</p>
+
+                <div class="method">
+                    <h3>__init__(efx)</h3>
+                    <p>Initialize the AudioEffect with EFX extension support.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>efx</code>: EFX extension instance from OpenAL context</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3>Reverb Effects</h3>
+                <div class="method">
+                    <h3>reverb(preset=None, **kwargs)</h3>
+                    <p>Apply reverb effect with preset or custom parameters.</p>
+                    <div class="method-details">
+                        <p><strong>Available Presets:</strong></p>
+                        <ul>
+                            <li><code>room</code> - Small room acoustics</li>
+                            <li><code>hall</code> - Concert hall reverb</li>
+                            <li><code>cathedral</code> - Large cathedral space</li>
+                            <li><code>bathroom</code> - Tiled bathroom echo</li>
+                            <li><code>cave</code> - Natural cave acoustics</li>
+                            <li><code>arena</code> - Large arena/stadium</li>
+                        </ul>
+                        <p><strong>Custom Parameters:</strong></p>
+                        <ul>
+                            <li><code>density</code> - Echo density (0.0-1.0)</li>
+                            <li><code>diffusion</code> - Echo diffusion (0.0-1.0)</li>
+                            <li><code>gain</code> - Overall reverb gain (0.0-1.0)</li>
+                            <li><code>gainhf</code> - High frequency gain (0.0-1.0)</li>
+                            <li><code>decay_time</code> - Reverb decay time in seconds</li>
+                            <li><code>decay_hfratio</code> - High frequency decay ratio</li>
+                        </ul>
+                    </div>
+                    <div class="code-example">
+                        <h4>Reverb Examples</h4>
+                        <pre><code># Using presets
+sound.add_effect('reverb', preset='cathedral')
+sound.add_effect('reverb', preset='underwater')
+
+# Custom reverb
+sound.add_effect('reverb', 
+    density=0.8, 
+    diffusion=0.9,
+    decay_time=2.5,
+    gainhf=0.3
+)</code></pre>
+                    </div>
+                </div>
+
+                <h3>Distortion Effects</h3>
+                <div class="method">
+                    <h3>distortion(edge=0.2, gain=0.05, lowpass_cutoff=8000.0)</h3>
+                    <p>Apply distortion and overdrive effects.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>edge</code> - Distortion amount (0.0-1.0)</li>
+                            <li><code>gain</code> - Output gain (0.01-1.0)</li>
+                            <li><code>lowpass_cutoff</code> - Low-pass filter frequency (80-24000 Hz)</li>
+                            <li><code>eqcenter</code> - EQ center frequency (80-24000 Hz)</li>
+                            <li><code>eqbandwidth</code> - EQ bandwidth (80-24000 Hz)</li>
+                        </ul>
+                    </div>
+                    <div class="code-example">
+                        <h4>Distortion Examples</h4>
+                        <pre><code># Mild overdrive
+sound.add_effect('distortion', edge=0.1, gain=0.8)
+
+# Heavy distortion
+sound.add_effect('distortion', edge=0.8, gain=0.3, lowpass_cutoff=4000)
+
+# Radio static effect
+sound.add_effect('distortion', edge=0.9, gain=0.2, lowpass_cutoff=2000)</code></pre>
+                    </div>
+                </div>
+
+                <h3>Echo Effects</h3>
+                <div class="method">
+                    <h3>echo(delay=0.1, lr_delay=0.1, damping=0.5, feedback=0.5, spread=-1.0)</h3>
+                    <p>Apply echo effect with configurable delay and feedback.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>delay</code> - Echo delay in seconds (0.0-0.207)</li>
+                            <li><code>lr_delay</code> - Left-right delay offset (0.0-0.404)</li>
+                            <li><code>damping</code> - Echo damping factor (0.0-0.99)</li>
+                            <li><code>feedback</code> - Echo feedback amount (0.0-1.0)</li>
+                            <li><code>spread</code> - Stereo spread (-1.0 to 1.0)</li>
+                        </ul>
+                    </div>
+                    <div class="code-example">
+                        <h4>Echo Examples</h4>
+                        <pre><code># Quick echo
+sound.add_effect('echo', delay=0.05, feedback=0.3)
+
+# Long canyon echo
+sound.add_effect('echo', delay=0.3, feedback=0.7, damping=0.8)
+
+# Stereo ping-pong echo
+sound.add_effect('echo', delay=0.15, lr_delay=0.1, spread=1.0)</code></pre>
+                    </div>
+                </div>
+
+                <h3>Chorus Effects</h3>
+                <div class="method">
+                    <h3>chorus(waveform=1, phase=90, rate=1.1, depth=0.1, feedback=0.25, delay=0.016)</h3>
+                    <p>Apply chorus effect for rich, ensemble-like sound.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>waveform</code> - LFO waveform (0=sine, 1=triangle)</li>
+                            <li><code>phase</code> - LFO phase in degrees (-180 to 180)</li>
+                            <li><code>rate</code> - LFO rate in Hz (0.0-10.0)</li>
+                            <li><code>depth</code> - Modulation depth (0.0-1.0)</li>
+                            <li><code>feedback</code> - Feedback amount (-1.0 to 1.0)</li>
+                            <li><code>delay</code> - Base delay in seconds (0.0-0.016)</li>
+                        </ul>
+                    </div>
+                    <div class="code-example">
+                        <h4>Chorus Examples</h4>
+                        <pre><code># Subtle chorus
+sound.add_effect('chorus', rate=0.8, depth=0.05, feedback=0.1)
+
+# Rich chorus
+sound.add_effect('chorus', rate=1.5, depth=0.2, feedback=0.4)
+
+# Ensemble effect
+sound.add_effect('chorus', waveform=0, rate=0.5, depth=0.3)</code></pre>
+                    </div>
+                </div>
+
+                <h3>Flanger Effects</h3>
+                <div class="method">
+                    <h3>flanger(waveform=1, phase=0, rate=0.27, depth=1.0, feedback=-0.5, delay=0.002)</h3>
+                    <p>Apply flanger effect for sweeping, jet-like sounds.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>waveform</code> - LFO waveform (0=sine, 1=triangle)</li>
+                            <li><code>phase</code> - LFO phase in degrees (-180 to 180)</li>
+                            <li><code>rate</code> - LFO rate in Hz (0.0-10.0)</li>
+                            <li><code>depth</code> - Modulation depth (0.0-1.0)</li>
+                            <li><code>feedback</code> - Feedback amount (-1.0 to 1.0)</li>
+                            <li><code>delay</code> - Base delay in seconds (0.0-0.004)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3>Pitch Shifting</h3>
+                <div class="method">
+                    <h3>pitch_shift(coarse_tune=12, fine_tune=0)</h3>
+                    <p>Apply real-time pitch shifting without affecting playback speed.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>coarse_tune</code> - Semitones adjustment (-12 to +12)</li>
+                            <li><code>fine_tune</code> - Fine tune in cents (-50 to +50)</li>
+                        </ul>
+                    </div>
+                    <div class="code-example">
+                        <h4>Pitch Shifting Examples</h4>
+                        <pre><code># Octave up
+sound.add_effect('pitch_shift', coarse_tune=12)
+
+# Perfect fifth
+sound.add_effect('pitch_shift', coarse_tune=7)
+
+# Slight detune
+sound.add_effect('pitch_shift', coarse_tune=0, fine_tune=10)</code></pre>
+                    </div>
+                </div>
+
+                <h3>Auto-Wah</h3>
+                <div class="method">
+                    <h3>auto_wah(attack_time=0.06, release_time=0.06, resonance=1000.0, peak_gain=11.22)</h3>
+                    <p>Apply dynamic auto-wah effect that responds to input level.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>attack_time</code> - Attack time in seconds (0.0001-1.0)</li>
+                            <li><code>release_time</code> - Release time in seconds (0.0001-1.0)</li>
+                            <li><code>resonance</code> - Filter resonance (2.0-1000.0)</li>
+                            <li><code>peak_gain</code> - Peak gain in dB (0.00003-31622.78)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3>Compressor</h3>
+                <div class="method">
+                    <h3>compressor(enabled=True)</h3>
+                    <p>Apply audio compression to control dynamic range.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>enabled</code> - Enable/disable compression</li>
+                        </ul>
+                        <p><strong>Note:</strong> Uses automatic settings optimized for general audio content.</p>
+                    </div>
+                </div>
+
+                <h3>Equalizer</h3>
+                <div class="method">
+                    <h3>equalizer(low_gain=1.0, low_cutoff=200.0, mid1_gain=1.0, mid1_center=500.0, ...)</h3>
+                    <p>Apply 4-band parametric equalizer.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>low_gain</code> - Low frequency gain (0.126-7.943)</li>
+                            <li><code>low_cutoff</code> - Low frequency cutoff (50-800 Hz)</li>
+                            <li><code>mid1_gain</code> - Mid1 frequency gain (0.126-7.943)</li>
+                            <li><code>mid1_center</code> - Mid1 center frequency (200-3000 Hz)</li>
+                            <li><code>mid1_width</code> - Mid1 bandwidth (0.01-1.0)</li>
+                            <li><code>mid2_gain</code> - Mid2 frequency gain (0.126-7.943)</li>
+                            <li><code>mid2_center</code> - Mid2 center frequency (1000-8000 Hz)</li>
+                            <li><code>mid2_width</code> - Mid2 bandwidth (0.01-1.0)</li>
+                            <li><code>high_gain</code> - High frequency gain (0.126-7.943)</li>
+                            <li><code>high_cutoff</code> - High frequency cutoff (4000-16000 Hz)</li>
+                        </ul>
+                    </div>
+                    <div class="code-example">
+                        <h4>Equalizer Examples</h4>
+                        <pre><code># Bass boost
+sound.add_effect('equalizer', low_gain=2.0, low_cutoff=150)
+
+# Voice clarity
+sound.add_effect('equalizer', 
+    mid1_gain=1.5, mid1_center=1000, mid1_width=0.5,
+    mid2_gain=1.3, mid2_center=3000
+)
+
+# High-end sparkle
+sound.add_effect('equalizer', high_gain=1.8, high_cutoff=8000)</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>AudioFilter Class</h2>
+                <p>The AudioFilter class provides direct filtering capabilities applied to the sound source.</p>
+
+                <div class="method">
+                    <h3>lowpass(gain=1.0, gainhf=0.5, **kwargs)</h3>
+                    <p>Create a low-pass filter that reduces high frequencies.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>gain</code> - Overall gain (0.0-1.0)</li>
+                            <li><code>gainhf</code> - High frequency gain (0.0-1.0)</li>
+                        </ul>
+                        <p><strong>Use cases:</strong> Muffled effects, underwater simulation, distance attenuation</p>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>highpass(gain=1.0, gainlf=0.5, **kwargs)</h3>
+                    <p>Create a high-pass filter that reduces low frequencies.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>gain</code> - Overall gain (0.0-1.0)</li>
+                            <li><code>gainlf</code> - Low frequency gain (0.0-1.0)</li>
+                        </ul>
+                        <p><strong>Use cases:</strong> Thin/tinny effects, radio simulation, distant sounds</p>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>bandpass(gain=1.0, gainlf=0.5, gainhf=0.5, **kwargs)</h3>
+                    <p>Create a band-pass filter that allows only a specific frequency range.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>gain</code> - Overall gain (0.0-1.0)</li>
+                            <li><code>gainlf</code> - Low frequency gain (0.0-1.0)</li>
+                            <li><code>gainhf</code> - High frequency gain (0.0-1.0)</li>
+                        </ul>
+                        <p><strong>Use cases:</strong> Radio effects, telephone simulation, intercom systems</p>
+                    </div>
+                </div>
+
+                <div class="code-example">
+                    <h4>Filter Examples</h4>
+                    <pre><code># Muffled underwater effect
+sound.add_filter('lowpass', gain=0.8, gainhf=0.2)
+
+# Radio transmission
+sound.add_filter('bandpass', gain=1.0, gainlf=0.1, gainhf=0.1)
+
+# Distant/thin sound
+sound.add_filter('highpass', gain=0.7, gainlf=0.3)</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>EffectPresets</h2>
+                <p>Pre-configured effect and filter settings for common audio scenarios.</p>
+
+                <h3>Reverb Presets</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Preset</th>
+                            <th>Description</th>
+                            <th>Use Case</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>small_room</code></td>
+                            <td>Intimate room acoustics</td>
+                            <td>Indoor dialogues, close environments</td>
+                        </tr>
+                        <tr>
+                            <td><code>medium_room</code></td>
+                            <td>Standard room size</td>
+                            <td>Living rooms, offices</td>
+                        </tr>
+                        <tr>
+                            <td><code>large_hall</code></td>
+                            <td>Concert hall acoustics</td>
+                            <td>Music performances, grand spaces</td>
+                        </tr>
+                        <tr>
+                            <td><code>auditorium</code></td>
+                            <td>Large auditorium space</td>
+                            <td>Speeches, presentations</td>
+                        </tr>
+                        <tr>
+                            <td><code>underwater</code></td>
+                            <td>Submerged acoustics</td>
+                            <td>Underwater scenes, special effects</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Filter Presets</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Preset</th>
+                            <th>Description</th>
+                            <th>Use Case</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>radio</code></td>
+                            <td>AM/FM radio quality</td>
+                            <td>Radio transmissions, vintage effects</td>
+                        </tr>
+                        <tr>
+                            <td><code>telephone</code></td>
+                            <td>Phone call quality</td>
+                            <td>Phone conversations, intercoms</td>
+                        </tr>
+                        <tr>
+                            <td><code>muffled</code></td>
+                            <td>Heavily muffled sound</td>
+                            <td>Through walls, underwater, distance</td>
+                        </tr>
+                        <tr>
+                            <td><code>thin</code></td>
+                            <td>Thin, tinny sound</td>
+                            <td>Cheap speakers, distant sources</td>
+                        </tr>
+                        <tr>
+                            <td><code>underwater</code></td>
+                            <td>Submerged filtering</td>
+                            <td>Swimming, diving scenes</td>
+                        </tr>
+                        <tr>
+                            <td><code>clear</code></td>
+                            <td>No filtering applied</td>
+                            <td>Reset to original sound</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="code-example">
+                    <h4>Using Presets</h4>
+                    <pre><code># Apply reverb preset
+sound.apply_reverb_preset('cathedral')
+
+# Apply filter preset
+sound.apply_filter_preset('radio')
+
+# Get available presets
+reverb_presets = manager.get_reverb_presets()
+filter_presets = manager.get_filter_presets()
+
+print("Available reverb presets:", reverb_presets)
+print("Available filter presets:", filter_presets)</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Effect Chaining</h2>
+                <p>Multiple effects can be chained together using different send slots for complex audio processing.</p>
+
+                <div class="code-example">
+                    <h4>Multi-Effect Processing</h4>
+                    <pre><code># Create layered effects
+sound = manager.play("guitar.ogg")
+
+# Slot 0: Reverb for ambience
+sound.add_effect('reverb', preset='hall', send_slot=0)
+
+# Slot 1: Chorus for richness
+sound.add_effect('chorus', rate=1.2, depth=0.15, send_slot=1)
+
+# Slot 2: Distortion for edge
+sound.add_effect('distortion', edge=0.3, gain=0.1, send_slot=2)
+
+# Direct filter on source
+sound.add_filter('highpass', gain=0.9, gainlf=0.7)
+
+# Result: Rich, processed guitar sound with multiple effects</code></pre>
+                </div>
+
+                <div class="note">
+                    <strong>Send Slots:</strong> Each sound source supports up to 4 auxiliary effect sends (slots 0-3). 
+                    Filters are applied directly to the source. This allows for complex effect routing and processing chains.
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Global Effects</h2>
+                <p>Create global effects that can be shared across multiple sounds for consistent processing and better performance.</p>
+
+                <div class="code-example">
+                    <h4>Global Effects Setup</h4>
+                    <pre><code># Create global effects
+manager.create_global_effect("hall_reverb", "reverb", preset="large_hall")
+manager.create_global_effect("radio_distortion", "distortion", edge=0.8, gain=0.2)
+manager.create_global_filter("underwater_filter", "lowpass", gain=0.6, gainhf=0.1)
+
+# Apply to multiple sounds
+sound1 = manager.play("voice1.ogg")
+sound2 = manager.play("voice2.ogg")
+sound3 = manager.play("voice3.ogg")
+
+# All voices get the same hall reverb
+manager.apply_global_effect_to_sound(sound1, "hall_reverb")
+manager.apply_global_effect_to_sound(sound2, "hall_reverb")
+manager.apply_global_effect_to_sound(sound3, "hall_reverb")
+
+# Apply environmental effects to all sounds at once
+manager.apply_room_acoustics("underwater")  # Applies to all active sounds</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Performance Considerations</h2>
+                <ul>
+                    <li><strong>Hardware Processing:</strong> Effects are processed by audio hardware/drivers, not CPU</li>
+                    <li><strong>Send Slots:</strong> Limited to 4 effect sends per source - use wisely</li>
+                    <li><strong>Global Effects:</strong> More efficient for applying same effect to multiple sources</li>
+                    <li><strong>Filter vs Effect:</strong> Filters are lighter than effects for simple frequency shaping</li>
+                    <li><strong>Preset Usage:</strong> Presets are optimized and load faster than custom parameters</li>
+                </ul>
+
+                <div class="warning">
+                    <strong>EFX Support Required:</strong> Effects require OpenAL EFX extension support. 
+                    The library will gracefully degrade if EFX is not available, but effects will not function.
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Complete Example: Dynamic Audio Scene</h2>
+                <div class="code-example">
+                    <pre><code>from al_manager import Manager
+import time
+
+# Initialize manager with effects
+manager = Manager()
+
+# Create global environmental effects
+manager.create_global_effect("cave_ambience", "reverb", preset="cave")
+manager.create_global_effect("water_chorus", "chorus", rate=0.3, depth=0.4)
+manager.create_global_filter("distance_filter", "lowpass", gain=0.8, gainhf=0.4)
+
+# Background ambience
+ambient = manager.play("forest_ambient.ogg", looping=True, volume=0.3)
+manager.apply_global_effect_to_sound(ambient, "cave_ambience")
+
+# Water sounds
+water = manager.play_p("water_flow.ogg", x=10, y=0, z=5, looping=True)
+manager.apply_global_effect_to_sound(water, "water_chorus")
+
+# Dynamic footsteps
+for step in range(10):
+    # Footstep with varying surface
+    footstep = manager.play_oneshot("footstep.ogg", volume=0.6)
+    
+    if step > 5:  # Entering cave area
+        # Add reverb and muffled filter
+        current_step = manager.play("footstep.ogg", volume=0.6)
+        current_step.add_effect('reverb', preset='cave')
+        current_step.add_filter('lowpass', gainhf=0.5)
+    
+    time.sleep(0.5)
+
+# Environmental change - entering underwater
+print("Diving underwater...")
+manager.apply_environmental_filter("underwater")
+manager.apply_room_acoustics("underwater")
+
+# All sounds now have underwater characteristics
+time.sleep(3)
+
+# Cleanup
+manager.destroy_all()</code></pre>
+                </div>
+            </section>
+        </div>
+    </div>
+</body>
+</html>

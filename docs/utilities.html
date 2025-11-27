@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Utilities - AL Manager Documentation</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="nav-header">
+            <h3><a href="index.html">AL Manager</a></h3>
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="manager.html">Manager</a></li>
+            <li><a href="sound.html">Sound Classes</a></li>
+            <li><a href="effects.html">Effects System</a></li>
+            <li><a href="sound-group.html">Sound Groups</a></li>
+            <li><a href="sound-pool.html">Sound Pool</a></li>
+            <li><a href="utilities.html" class="active">Utilities</a></li>
+        </ul>
+    </nav>
+
+    <div class="content">
+        <div class="container">
+            <h1>Utilities</h1>
+            <p class="lead">Helper functions, coordinate conversion utilities, and supporting components for AL Manager.</p>
+
+            <section class="section">
+                <h2>Overview</h2>
+                <p>AL Manager includes various utility functions and helper classes to support audio operations, coordinate system conversions, and advanced audio management features.</p>
+                
+                <h3>Included Utilities</h3>
+                <ul>
+                    <li><strong>Coordinate Conversion:</strong> Transform between coordinate systems</li>
+                    <li><strong>EFX Manager:</strong> Centralized effects extension management</li>
+                    <li><strong>Orientation Helpers:</strong> 3D audio orientation calculations</li>
+                    <li><strong>Audio Format Support:</strong> Multi-format audio loading utilities</li>
+                </ul>
+            </section>
+
+            <section class="section">
+                <h2>Coordinate Conversion</h2>
+                <p>Functions for converting between different coordinate systems used in games and OpenAL.</p>
+
+                <div class="method">
+                    <h3>convert_to_openal_coordinates(x, y, z)</h3>
+                    <p>Convert from right-handed coordinate system to OpenAL's coordinate system.</p>
+                    <div class="method-details">
+                        <p><strong>Source:</strong> al_manager.assist</p>
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>x</code> (float) - X coordinate (unchanged)</li>
+                            <li><code>y</code> (float) - Y coordinate (becomes negative Z in OpenAL)</li>
+                            <li><code>z</code> (float) - Z coordinate (becomes Y in OpenAL)</li>
+                        </ul>
+                        <p><strong>Returns:</strong> Tuple of (openal_x, openal_y, openal_z)</p>
+                    </div>
+                    
+                    <div class="code-example">
+                        <h4>Coordinate System Conversion</h4>
+                        <pre><code>from al_manager.assist import convert_to_openal_coordinates
+
+# Game world coordinates (right-handed, Y-up)
+game_x, game_y, game_z = 10.0, 5.0, -3.0
+
+# Convert to OpenAL coordinates
+al_x, al_y, al_z = convert_to_openal_coordinates(game_x, game_y, game_z)
+print(f"Game: ({game_x}, {game_y}, {game_z})")
+print(f"OpenAL: ({al_x}, {al_y}, {al_z})")
+
+# Use in sound positioning
+sound.position = convert_to_openal_coordinates(player.x, player.y, player.z)</code></pre>
+                    </div>
+
+                    <div class="note">
+                        <strong>Coordinate Systems:</strong>
+                        <ul>
+                            <li><strong>Game (Right-handed):</strong> X=right, Y=up, Z=forward</li>
+                            <li><strong>OpenAL:</strong> X=right, Y=forward, Z=up</li>
+                        </ul>
+                        This conversion ensures proper 3D audio positioning when using standard game coordinate systems.
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>EfxManager Class</h2>
+                <p>Centralized manager for OpenAL EFX (Effects Extension) to avoid context attribute issues.</p>
+
+                <div class="method">
+                    <h3>get_efx(context)</h3>
+                    <p>Get or create EFX extension instance for a given OpenAL context.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>context</code> - OpenAL context object</li>
+                        </ul>
+                        <p><strong>Returns:</strong> EFX extension instance or None if not supported</p>
+                        <p><strong>Note:</strong> This is a class method that maintains a registry of EFX instances per context.</p>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>has_efx(context)</h3>
+                    <p>Check if EFX extension exists and is available for the given context.</p>
+                    <div class="method-details">
+                        <p><strong>Returns:</strong> True if EFX is available, False otherwise</p>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>remove_efx(context)</h3>
+                    <p>Remove and cleanup EFX extension for the given context.</p>
+                    <div class="method-details">
+                        <p><strong>Note:</strong> Called automatically during context cleanup to prevent memory leaks.</p>
+                    </div>
+                </div>
+
+                <div class="code-example">
+                    <h4>EFX Manager Usage</h4>
+                    <pre><code>from al_manager.efx_manager import EfxManager
+
+# Check if effects are supported
+if EfxManager.has_efx(context):
+    print("Audio effects are supported")
+    
+    # Get EFX extension
+    efx = EfxManager.get_efx(context)
+    
+    # Use for creating effects
+    effect = efx.create_effect()
+    # ... configure effect
+else:
+    print("Audio effects not supported - using fallback audio")
+
+# Cleanup (usually automatic)
+EfxManager.remove_efx(context)</code></pre>
+                </div>
+
+                <div class="warning">
+                    <strong>EFX Availability:</strong> Not all audio systems support the EFX extension. Always check availability before attempting to use audio effects. AL Manager gracefully degrades functionality when EFX is unavailable.
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Orientation Helpers</h2>
+                <p>Mathematical utilities for 3D audio orientation and positioning calculations.</p>
+
+                <div class="method">
+                    <h3>deg2rad(angle)</h3>
+                    <p>Convert degrees to radians for trigonometric calculations.</p>
+                    <div class="method-details">
+                        <p><strong>Source:</strong> al_manager.sound</p>
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>angle</code> (float) - Angle in degrees</li>
+                        </ul>
+                        <p><strong>Returns:</strong> Angle in radians</p>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>make_orientation(hdegrees, vdegrees, bdegrees=0)</h3>
+                    <p>Create 3D orientation vector for advanced positional audio setup.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>hdegrees</code> (float) - Horizontal rotation in degrees (yaw)</li>
+                            <li><code>vdegrees</code> (float) - Vertical rotation in degrees (pitch)</li>
+                            <li><code>bdegrees</code> (float) - Banking rotation in degrees (roll, default: 0)</li>
+                        </ul>
+                        <p><strong>Returns:</strong> Tuple of orientation vectors for OpenAL listener</p>
+                    </div>
+
+                    <div class="code-example">
+                        <h4>3D Orientation Setup</h4>
+                        <pre><code>from al_manager.sound import deg2rad, make_orientation
+
+# Convert game camera angles to radians
+yaw_rad = deg2rad(player_camera.yaw)
+pitch_rad = deg2rad(player_camera.pitch)
+
+# Create listener orientation for 3D audio
+orientation = make_orientation(player_camera.yaw, player_camera.pitch)
+
+# Apply to AL Manager listener
+manager.listener.orientation = orientation
+
+# For precise directional audio (e.g., headphone simulation)
+def update_listener_orientation(camera):
+    # Convert camera rotation to audio orientation
+    h_rotation = camera.horizontal_angle
+    v_rotation = camera.vertical_angle
+    
+    # Create orientation vectors
+    orientation = make_orientation(h_rotation, v_rotation)
+    manager.listener.orientation = orientation
+    
+    print(f"Listener oriented: H={h_rotation}°, V={v_rotation}°")</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Audio Format Support</h2>
+                <p>AL Manager includes comprehensive audio format support through multiple libraries.</p>
+
+                <h3>Supported Formats</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Format</th>
+                            <th>Library</th>
+                            <th>Quality</th>
+                            <th>Use Case</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>OGG Vorbis</td>
+                            <td>pyogg</td>
+                            <td>Native</td>
+                            <td>Recommended for all audio</td>
+                        </tr>
+                        <tr>
+                            <td>WAV</td>
+                            <td>pydub</td>
+                            <td>High</td>
+                            <td>Uncompressed audio</td>
+                        </tr>
+                        <tr>
+                            <td>MP3</td>
+                            <td>pydub</td>
+                            <td>Good</td>
+                            <td>Compatibility</td>
+                        </tr>
+                        <tr>
+                            <td>M4A/AAC</td>
+                            <td>pydub</td>
+                            <td>Good</td>
+                            <td>Apple ecosystem</td>
+                        </tr>
+                        <tr>
+                            <td>FLAC</td>
+                            <td>pydub</td>
+                            <td>Lossless</td>
+                            <td>High-quality music</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="code-example">
+                    <h4>Automatic Format Detection</h4>
+                    <pre><code># AL Manager automatically handles format conversion
+sound = manager.play("music.mp3")      # Converted via pydub
+sound2 = manager.play("effect.ogg")    # Native pyogg loading
+sound3 = manager.play("voice.wav")     # Converted via pydub
+sound4 = manager.play("song.m4a")      # Converted via pydub
+
+# Streaming works with all formats
+stream = StreamingSound()
+stream.load_stream("large_music.flac") # Automatically converted
+
+# Format-specific optimization
+def load_optimized_audio(filename):
+    if filename.endswith('.ogg'):
+        # OGG loads fastest - use directly
+        return manager.play(filename)
+    else:
+        # Other formats need conversion - consider caching
+        print(f"Converting {filename} from {filename.split('.')[-1]} format")
+        return manager.play(filename)</code></pre>
+                </div>
+
+                <div class="note">
+                    <strong>Performance Note:</strong> OGG files load fastest as they don't require format conversion. Other formats are automatically converted by pydub, which adds a small loading delay but maintains full compatibility.
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Advanced Usage Utilities</h2>
+
+                <h3>Distance Calculation Helpers</h3>
+                <div class="code-example">
+                    <h4>3D Distance and Attenuation</h4>
+                    <pre><code>import math
+from al_manager.assist import convert_to_openal_coordinates
+
+def calculate_distance_3d(pos1, pos2):
+    """Calculate 3D distance between two points."""
+    dx = pos1[0] - pos2[0]
+    dy = pos1[1] - pos2[1] 
+    dz = pos1[2] - pos2[2]
+    return math.sqrt(dx*dx + dy*dy + dz*dz)
+
+def calculate_volume_attenuation(distance, max_distance=100.0, reference_distance=1.0):
+    """Calculate volume attenuation based on distance."""
+    if distance <= reference_distance:
+        return 1.0
+    elif distance >= max_distance:
+        return 0.0
+    else:
+        # Linear attenuation
+        return 1.0 - ((distance - reference_distance) / (max_distance - reference_distance))
+
+def position_sound_relative_to_player(sound, world_pos, player_pos, player_rotation):
+    """Position sound relative to player with proper coordinate conversion."""
+    # Calculate relative position
+    relative_x = world_pos[0] - player_pos[0]
+    relative_y = world_pos[1] - player_pos[1]
+    relative_z = world_pos[2] - player_pos[2]
+    
+    # Rotate relative to player facing direction
+    cos_rot = math.cos(math.radians(player_rotation))
+    sin_rot = math.sin(math.radians(player_rotation))
+    
+    rotated_x = relative_x * cos_rot - relative_z * sin_rot
+    rotated_z = relative_x * sin_rot + relative_z * cos_rot
+    
+    # Convert to OpenAL coordinates
+    al_pos = convert_to_openal_coordinates(rotated_x, relative_y, rotated_z)
+    sound.position = al_pos
+    
+    # Calculate distance-based volume
+    distance = calculate_distance_3d((0, 0, 0), (rotated_x, relative_y, rotated_z))
+    volume = calculate_volume_attenuation(distance)
+    sound.volume = volume
+
+# Usage example
+enemy_world_pos = (50, 0, 30)
+player_world_pos = (10, 0, 10)
+player_facing = 45  # degrees
+
+enemy_sound = manager.play("enemy_growl.ogg")
+position_sound_relative_to_player(enemy_sound, enemy_world_pos, 
+                                 player_world_pos, player_facing)</code></pre>
+                </div>
+
+                <h3>Performance Monitoring Utilities</h3>
+                <div class="code-example">
+                    <h4>Audio System Profiler</h4>
+                    <pre><code>import time
+from collections import defaultdict
+
+class AudioProfiler:
+    def __init__(self, manager):
+        self.manager = manager
+        self.start_time = time.time()
+        self.metrics = defaultdict(list)
+        
+    def sample_metrics(self):
+        """Collect current audio system metrics."""
+        current_time = time.time() - self.start_time
+        
+        # Manager metrics
+        active_sounds = len([item for item in self.manager.items if item.is_playing])
+        total_sounds = len(self.manager.items)
+        
+        # Sound pool metrics
+        pool_stats = self.manager.sound_pool.get_stats()
+        
+        # EFX metrics
+        efx_available = EfxManager.has_efx(self.manager.listener.context)
+        
+        sample = {
+            'time': current_time,
+            'active_sounds': active_sounds,
+            'total_sounds': total_sounds,
+            'pool_active': pool_stats['active_oneshots'],
+            'pool_max': pool_stats['max_oneshots'],
+            'efx_available': efx_available
+        }
+        
+        self.metrics['samples'].append(sample)
+        return sample
+    
+    def get_performance_summary(self):
+        """Generate performance summary."""
+        if not self.metrics['samples']:
+            return "No metrics collected"
+        
+        samples = self.metrics['samples']
+        latest = samples[-1]
+        
+        max_active = max(s['active_sounds'] for s in samples)
+        avg_active = sum(s['active_sounds'] for s in samples) / len(samples)
+        
+        max_pool = max(s['pool_active'] for s in samples)
+        avg_pool = sum(s['pool_active'] for s in samples) / len(samples)
+        
+        summary = f"""
+Audio Performance Summary
+========================
+Duration: {latest['time']:.1f} seconds
+Samples collected: {len(samples)}
+
+Active Sounds:
+  Maximum: {max_active}
+  Average: {avg_active:.1f}
+  Current: {latest['active_sounds']}
+
+Sound Pool:
+  Maximum used: {max_pool}/{latest['pool_max']}
+  Average used: {avg_pool:.1f}/{latest['pool_max']}
+  Current: {latest['pool_active']}/{latest['pool_max']}
+
+System:
+  EFX Available: {'Yes' if latest['efx_available'] else 'No'}
+  Memory efficiency: {'Good' if avg_active < max_active * 0.7 else 'Monitor cleanup'}
+        """
+        
+        return summary
+
+# Usage in game
+profiler = AudioProfiler(manager)
+
+def game_update_loop(dt):
+    # Sample metrics periodically
+    profiler.sample_metrics()
+    
+    # ... rest of game logic
+
+# Print performance report
+print(profiler.get_performance_summary())</code></pre>
+                </div>
+
+                <h3>Configuration Helpers</h3>
+                <div class="code-example">
+                    <h4>Audio System Configuration</h4>
+                    <pre><code>class AudioConfig:
+    """Centralized audio configuration management."""
+    
+    def __init__(self):
+        self.master_volume = 1.0
+        self.sfx_volume = 1.0
+        self.music_volume = 1.0
+        self.voice_volume = 1.0
+        self.max_distance = 100.0
+        self.reference_distance = 1.0
+        self.doppler_factor = 1.0
+        
+    def apply_to_manager(self, manager):
+        """Apply configuration to AL Manager instance."""
+        # Set listener properties
+        manager.listener.gain = self.master_volume
+        
+        # Configure distance model
+        # Note: These would need to be set on individual sounds
+        # as OpenAL doesn't have global distance settings
+        
+    def create_sound_with_config(self, manager, filename, category='sfx'):
+        """Create sound with category-specific volume."""
+        volume_multiplier = {
+            'sfx': self.sfx_volume,
+            'music': self.music_volume,  
+            'voice': self.voice_volume
+        }.get(category, 1.0)
+        
+        final_volume = self.master_volume * volume_multiplier
+        
+        sound = manager.play(filename, volume=final_volume)
+        sound.max_distance = self.max_distance
+        sound.reference_distance = self.reference_distance
+        
+        return sound
+    
+    def save_to_file(self, filename):
+        """Save configuration to file."""
+        import json
+        config_data = {
+            'master_volume': self.master_volume,
+            'sfx_volume': self.sfx_volume,
+            'music_volume': self.music_volume,
+            'voice_volume': self.voice_volume,
+            'max_distance': self.max_distance,
+            'reference_distance': self.reference_distance
+        }
+        
+        with open(filename, 'w') as f:
+            json.dump(config_data, f, indent=2)
+    
+    def load_from_file(self, filename):
+        """Load configuration from file."""
+        import json
+        try:
+            with open(filename, 'r') as f:
+                config_data = json.load(f)
+            
+            for key, value in config_data.items():
+                if hasattr(self, key):
+                    setattr(self, key, value)
+                    
+        except FileNotFoundError:
+            print(f"Config file {filename} not found, using defaults")
+
+# Usage
+audio_config = AudioConfig()
+audio_config.load_from_file('audio_settings.json')
+audio_config.apply_to_manager(manager)
+
+# Create sounds with configuration
+sfx_sound = audio_config.create_sound_with_config(manager, "explosion.ogg", "sfx")
+music_sound = audio_config.create_sound_with_config(manager, "background.ogg", "music")</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Error Handling Utilities</h2>
+                <div class="code-example">
+                    <h4>Robust Error Handling</h4>
+                    <pre><code>class AudioErrorHandler:
+                    """Centralized error handling for audio operations."""
+                    
+                    def __init__(self, manager):
+                        self.manager = manager
+                        self.error_counts = defaultdict(int)
+                        self.fallback_sounds = {}
+                        
+                    def safe_play(self, filename, fallback=None, **kwargs):
+                        """Safely play audio with fallback options."""
+                        try:
+                            return self.manager.play(filename, **kwargs)
+                        except FileNotFoundError:
+                            self.error_counts['file_not_found'] += 1
+                            print(f"Audio file not found: {filename}")
+                            
+                            if fallback:
+                                try:
+                                    return self.manager.play(fallback, **kwargs)
+                                except:
+                                    print(f"Fallback audio also failed: {fallback}")
+                            
+                        except Exception as e:
+                            self.error_counts['other_error'] += 1
+                            print(f"Audio error for {filename}: {e}")
+                            
+                        return None
+                    
+                    def safe_add_effect(self, sound, effect_type, **kwargs):
+                        """Safely add effect with EFX availability check."""
+                        if not sound:
+                            return False
+                            
+                        try:
+                            if EfxManager.has_efx(sound.hd.context):
+                                sound.add_effect(effect_type, **kwargs)
+                                return True
+                            else:
+                                print(f"EFX not available, skipping {effect_type} effect")
+                                return False
+                        except Exception as e:
+                            self.error_counts['effect_error'] += 1
+                            print(f"Effect error ({effect_type}): {e}")
+                            return False
+                    
+                    def register_fallback(self, primary_file, fallback_file):
+                        """Register fallback sounds for missing files."""
+                        self.fallback_sounds[primary_file] = fallback_file
+                    
+                    def get_error_report(self):
+                        """Get summary of audio errors."""
+                        if not self.error_counts:
+                            return "No audio errors recorded"
+                            
+                        report = "Audio Error Summary:\n"
+                        for error_type, count in self.error_counts.items():
+                            report += f"  {error_type}: {count}\n"
+                        
+                        return report
+
+# Usage with error handling
+error_handler = AudioErrorHandler(manager)
+
+# Register fallbacks for critical sounds
+error_handler.register_fallback("player_hurt.ogg", "generic_hurt.ogg")
+error_handler.register_fallback("boss_music.ogg", "default_music.ogg")
+
+# Safe audio operations
+sound = error_handler.safe_play("explosion.ogg", fallback="generic_explosion.ogg")
+if sound:
+    error_handler.safe_add_effect(sound, 'reverb', preset='hall')
+
+# Monitor errors
+print(error_handler.get_error_report())</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Best Practices</h2>
+                <ul>
+                    <li><strong>Coordinate Conversion:</strong> Always convert game coordinates to OpenAL coordinates for proper 3D positioning</li>
+                    <li><strong>EFX Checking:</strong> Always check EFX availability before attempting to use audio effects</li>
+                    <li><strong>Error Handling:</strong> Implement fallback mechanisms for missing audio files and unsupported features</li>
+                    <li><strong>Performance Monitoring:</strong> Use profiling utilities in debug builds to optimize audio performance</li>
+                    <li><strong>Configuration Management:</strong> Centralize audio settings for easy adjustment and user preferences</li>
+                    <li><strong>Format Optimization:</strong> Prefer OGG format for best performance, but support multiple formats for compatibility</li>
+                    <li><strong>Distance Calculations:</strong> Implement custom distance attenuation for fine-grained control</li>
+                    <li><strong>Memory Management:</strong> Regular cleanup and monitoring prevent audio-related memory leaks</li>
+                </ul>
+
+                <div class="note">
+                    <strong>Platform Considerations:</strong> Different platforms may have varying levels of audio support. 
+                    The utility functions help abstract these differences and provide consistent behavior across platforms.
+                </div>
+            </section>
+        </div>
+    </div>
+</body>
+</html>

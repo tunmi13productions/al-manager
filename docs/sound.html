@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sound Classes - AL Manager Documentation</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="nav-header">
+            <h3><a href="index.html">AL Manager</a></h3>
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="manager.html">Manager</a></li>
+            <li><a href="sound.html" class="active">Sound Classes</a></li>
+            <li><a href="effects.html">Effects System</a></li>
+            <li><a href="sound-group.html">Sound Groups</a></li>
+            <li><a href="sound-pool.html">Sound Pool</a></li>
+            <li><a href="utilities.html">Utilities</a></li>
+        </ul>
+    </nav>
+
+    <div class="content">
+        <div class="container">
+            <h1>Sound Classes</h1>
+            <p class="lead">Individual sound management and streaming capabilities for various audio playback scenarios.</p>
+
+            <section class="section">
+                <h2>Overview</h2>
+                <p>AL Manager provides multiple sound classes for different use cases:</p>
+                <ul>
+                    <li><strong>Sound</strong> - Basic sound class for standard audio files</li>
+                    <li><strong>StreamingSound</strong> - For large audio files with chunk-based loading</li>
+                    <li><strong>URLSound</strong> - For streaming audio from remote URLs</li>
+                </ul>
+                <p>All sound classes support effects, filters, 3D positioning, and provide comprehensive playback control.</p>
+            </section>
+
+            <section class="section">
+                <h2>Sound Class</h2>
+                <p>The basic Sound class handles loading and playback of audio files with full effects support.</p>
+
+                <div class="method">
+                    <h3>__init__(ctx=None)</h3>
+                    <p>Initialize a new Sound instance.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>ctx</code> (optional): OpenAL context, uses default if not provided</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>load(filename)</h3>
+                    <p>Load an audio file for playback. Supports multiple formats through automatic conversion.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>filename</code> (str): Path to audio file</li>
+                        </ul>
+                        <p><strong>Supported formats:</strong></p>
+                        <ul>
+                            <li>OGG Vorbis (native support via pyogg)</li>
+                            <li>WAV, MP3, M4A, FLAC (converted via pydub)</li>
+                        </ul>
+                        <p><strong>Returns:</strong> True if successful</p>
+                    </div>
+                    <div class="code-example">
+                        <h4>Basic Loading</h4>
+                        <pre><code>from al_manager.sound import Sound
+
+sound = Sound()
+sound.load("music.ogg")
+sound.play()</code></pre>
+                    </div>
+                </div>
+
+                <h3>Playback Control</h3>
+                <div class="method-grid">
+                    <div class="method">
+                        <h4>play()</h4>
+                        <p>Play the sound once from the beginning.</p>
+                    </div>
+                    <div class="method">
+                        <h4>play_looped()</h4>
+                        <p>Play the sound in a continuous loop.</p>
+                    </div>
+                    <div class="method">
+                        <h4>pause()</h4>
+                        <p>Pause playback, can be resumed.</p>
+                    </div>
+                    <div class="method">
+                        <h4>stop()</h4>
+                        <p>Stop playback and reset position.</p>
+                    </div>
+                </div>
+
+                <h3>Effects and Filters</h3>
+                <div class="method">
+                    <h3>add_effect(effect_type, send_slot=0, **kwargs)</h3>
+                    <p>Add an audio effect to this sound.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>effect_type</code> (str): Effect type (reverb, echo, chorus, etc.)</li>
+                            <li><code>send_slot</code> (int): Effect slot number (0-3)</li>
+                            <li><code>**kwargs</code>: Effect-specific parameters</li>
+                        </ul>
+                    </div>
+                    <div class="code-example">
+                        <h4>Adding Effects</h4>
+                        <pre><code># Add reverb effect
+sound.add_effect('reverb', preset='hall')
+
+# Add custom echo
+sound.add_effect('echo', delay=0.2, feedback=0.5, damping=0.3)
+
+# Add multiple effects
+sound.add_effect('chorus', rate=1.1, depth=0.1, send_slot=1)
+sound.add_effect('distortion', edge=0.3, gain=0.1, send_slot=2)</code></pre>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>add_filter(filter_type, **kwargs)</h3>
+                    <p>Add an audio filter directly to the sound source.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>filter_type</code> (str): Filter type (lowpass, highpass, bandpass)</li>
+                            <li><code>**kwargs</code>: Filter-specific parameters</li>
+                        </ul>
+                    </div>
+                    <div class="code-example">
+                        <h4>Adding Filters</h4>
+                        <pre><code># Muffled sound effect
+sound.add_filter('lowpass', gain=1.0, gainhf=0.3)
+
+# Radio effect
+sound.add_filter('bandpass', gain=1.0, gainlf=0.1, gainhf=0.1)</code></pre>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>apply_filter_preset(preset_name)</h3>
+                    <p>Apply a predefined filter preset.</p>
+                    <div class="method-details">
+                        <p><strong>Available presets:</strong> radio, telephone, muffled, thin, underwater, clear</p>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>apply_reverb_preset(preset_name, send_slot=0)</h3>
+                    <p>Apply a predefined reverb preset.</p>
+                    <div class="method-details">
+                        <p><strong>Available presets:</strong> small_room, medium_room, large_hall, auditorium, underwater</p>
+                    </div>
+                </div>
+
+                <h3>Properties</h3>
+                <div class="property">
+                    <h3>is_active</h3>
+                    <p>Boolean indicating if the sound is properly loaded and ready for playback.</p>
+                </div>
+
+                <div class="property">
+                    <h3>is_playing</h3>
+                    <p>Boolean indicating if the sound is currently playing.</p>
+                </div>
+
+                <div class="property">
+                    <h3>paused</h3>
+                    <p>Boolean indicating if the sound is paused.</p>
+                </div>
+
+                <div class="property">
+                    <h3>looping</h3>
+                    <p>Get or set the looping state of the sound.</p>
+                </div>
+
+                <div class="property">
+                    <h3>volume</h3>
+                    <p>Get or set the volume level (0.0-1.0).</p>
+                </div>
+
+                <div class="property">
+                    <h3>pitch</h3>
+                    <p>Get or set the pitch multiplier (0.5-2.0).</p>
+                </div>
+
+                <div class="property">
+                    <h3>position</h3>
+                    <p>Get or set the 3D position as (x, y, z) tuple.</p>
+                </div>
+
+                <div class="property">
+                    <h3>direct</h3>
+                    <p>Get or set direct (non-positional) mode. True for stereo sounds, False for positioned.</p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>StreamingSound Class</h2>
+                <p>Optimized for large audio files like background music. Loads audio in chunks to minimize memory usage.</p>
+
+                <div class="method">
+                    <h3>load_stream(filename, chunk_size=None, preload_buffers=None)</h3>
+                    <p>Load an audio file for streaming playback.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>filename</code> (str): Path to audio file</li>
+                            <li><code>chunk_size</code> (int): Size of each audio chunk in bytes</li>
+                            <li><code>preload_buffers</code> (int): Number of buffers to preload</li>
+                        </ul>
+                    </div>
+                    <div class="code-example">
+                        <h4>Streaming Audio</h4>
+                        <pre><code>from al_manager.sound import StreamingSound
+
+# Create streaming sound for background music
+music = StreamingSound()
+music.load_stream("background_music.ogg", chunk_size=65536)
+music.play(loop=True)
+
+# Monitor playback position
+print(f"Position: {music.get_playback_position():.2f}s")
+print(f"Duration: {music.get_duration():.2f}s")</code></pre>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>play(loop=False)</h3>
+                    <p>Start streaming playback.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>loop</code> (bool): Whether to loop the stream</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="method-grid">
+                    <div class="method">
+                        <h4>pause()</h4>
+                        <p>Pause streaming playback.</p>
+                    </div>
+                    <div class="method">
+                        <h4>resume()</h4>
+                        <p>Resume paused stream.</p>
+                    </div>
+                    <div class="method">
+                        <h4>stop()</h4>
+                        <p>Stop streaming and cleanup.</p>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>get_playback_position()</h3>
+                    <p>Get current playback position in seconds.</p>
+                    <div class="method-details">
+                        <p><strong>Returns:</strong> Current position as float</p>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>get_duration()</h3>
+                    <p>Get total duration of the audio stream in seconds.</p>
+                    <div class="method-details">
+                        <p><strong>Returns:</strong> Total duration as float</p>
+                    </div>
+                </div>
+
+                <div class="note">
+                    <strong>Performance Note:</strong> StreamingSound is ideal for long audio files (>30 seconds) like background music. 
+                    For short sounds, use the regular Sound class which loads the entire file into memory.
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>URLSound Class</h2>
+                <p>Experimental class for streaming audio from remote URLs. Useful for internet radio or remote audio files.</p>
+
+                <div class="warning">
+                    <strong>Experimental Feature:</strong> URLSound is in experimental stage. Network issues may affect playback quality.
+                </div>
+
+                <div class="code-example">
+                    <h4>Streaming from URL</h4>
+                    <pre><code>from al_manager.sound import URLSound
+
+# Stream from internet radio
+radio = URLSound()
+radio.load_url("http://example.com/radio_stream.mp3")
+radio.play()</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>3D Audio Properties</h2>
+                <p>All sound classes support comprehensive 3D audio positioning and distance attenuation.</p>
+
+                <div class="method">
+                    <h3>Distance Attenuation Properties</h3>
+                    <div class="method-details">
+                        <ul>
+                            <li><code>max_distance</code> - Maximum audible distance</li>
+                            <li><code>reference_distance</code> - Distance where no attenuation occurs</li>
+                            <li><code>rolloff_factor</code> - Rate of volume decrease with distance</li>
+                        </ul>
+                    </div>
+                    <div class="code-example">
+                        <h4>3D Audio Setup</h4>
+                        <pre><code># Configure 3D audio properties
+sound.max_distance = 100.0
+sound.reference_distance = 5.0
+sound.rolloff_factor = 1.0
+
+# Position the sound
+sound.position = (10, 2, -5)
+sound.direct = False  # Enable 3D positioning</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Helper Functions</h2>
+
+                <div class="method">
+                    <h3>deg2rad(angle)</h3>
+                    <p>Convert degrees to radians for orientation calculations.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>angle</code> (float): Angle in degrees</li>
+                        </ul>
+                        <p><strong>Returns:</strong> Angle in radians</p>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>make_orientation(hdegrees, vdegrees, bdegrees=0)</h3>
+                    <p>Create 3D orientation vector for advanced positional audio.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>hdegrees</code> (float): Horizontal rotation in degrees</li>
+                            <li><code>vdegrees</code> (float): Vertical rotation in degrees</li>
+                            <li><code>bdegrees</code> (float): Banking rotation in degrees</li>
+                        </ul>
+                        <p><strong>Returns:</strong> Orientation tuple for OpenAL</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Complete Usage Example</h2>
+                <div class="code-example">
+                    <pre><code>from al_manager.sound import Sound, StreamingSound
+
+# Load and configure a positional sound effect
+explosion = Sound()
+explosion.load("explosion.wav")
+explosion.position = (20, 5, -10)
+explosion.max_distance = 50.0
+explosion.add_effect('reverb', preset='large_hall')
+explosion.add_effect('distortion', edge=0.4, gain=0.2)
+explosion.play()
+
+# Setup background music with streaming
+background_music = StreamingSound()
+background_music.load_stream("epic_soundtrack.ogg")
+background_music.set_volume(0.6)
+background_music.add_effect('chorus', rate=0.8, depth=0.05)
+background_music.play(loop=True)
+
+# Create atmospheric sound with environmental filter
+wind = Sound()
+wind.load("wind_ambient.ogg")
+wind.apply_filter_preset('muffled')
+wind.looping = True
+wind.volume = 0.4
+wind.play()
+
+# Monitor streaming progress
+import time
+while background_music.is_playing:
+    pos = background_music.get_playback_position()
+    duration = background_music.get_duration()
+    print(f"Music: {pos:.1f}s / {duration:.1f}s")
+    time.sleep(1)
+
+# Cleanup
+explosion.close()
+background_music.stop()
+wind.close()</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Memory Management</h2>
+                <p>Proper cleanup is important for preventing memory leaks and OpenAL resource exhaustion.</p>
+
+                <div class="method">
+                    <h3>close()</h3>
+                    <p>Clean up sound resources and free OpenAL objects.</p>
+                    <div class="method-details">
+                        <p><strong>Note:</strong> Always call close() when done with a sound, especially for StreamingSound instances.</p>
+                    </div>
+                </div>
+
+                <div class="code-example">
+                    <h4>Proper Cleanup</h4>
+                    <pre><code># Using context manager (recommended)
+with Sound() as sound:
+    sound.load("audio.ogg")
+    sound.play()
+    # Automatically cleaned up
+
+# Manual cleanup
+sound = Sound()
+try:
+    sound.load("audio.ogg")
+    sound.play()
+finally:
+    sound.close()  # Ensure cleanup</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Error Handling</h2>
+                <p>Sound classes include robust error handling for common issues:</p>
+                <ul>
+                    <li>Invalid or missing audio files</li>
+                    <li>Unsupported audio formats</li>
+                    <li>OpenAL context issues</li>
+                    <li>Network problems (URLSound)</li>
+                    <li>Memory allocation failures</li>
+                </ul>
+
+                <div class="code-example">
+                    <h4>Error Handling Example</h4>
+                    <pre><code>sound = Sound()
+try:
+    if sound.load("audio.ogg"):
+        sound.play()
+    else:
+        print("Failed to load audio file")
+except Exception as e:
+    print(f"Audio error: {e}")
+finally:
+    sound.close()</code></pre>
+                </div>
+            </section>
+        </div>
+    </div>
+</body>
+</html>

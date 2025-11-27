@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manager Class - AL Manager Documentation</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="nav-header">
+            <h3><a href="index.html">AL Manager</a></h3>
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="manager.html" class="active">Manager</a></li>
+            <li><a href="sound.html">Sound Classes</a></li>
+            <li><a href="effects.html">Effects System</a></li>
+            <li><a href="sound-group.html">Sound Groups</a></li>
+            <li><a href="sound-pool.html">Sound Pool</a></li>
+            <li><a href="utilities.html">Utilities</a></li>
+        </ul>
+    </nav>
+
+    <div class="content">
+        <div class="container">
+            <h1>Manager Class</h1>
+            <p class="lead">Main audio manager class that handles sound playback, effects, and 3D audio positioning.</p>
+
+            <section class="section">
+                <h2>Overview</h2>
+                <p>The Manager class is the primary interface for the AL Manager library. It handles OpenAL context initialization, sound management, and provides high-level methods for playing audio with effects and filters.</p>
+                
+                <div class="code-example">
+                    <h4>Basic Usage</h4>
+                    <pre><code>from al_manager import Manager
+
+# Initialize the manager
+manager = Manager()
+
+# Play a simple sound
+sound = manager.play("audio.ogg", volume=0.8)
+
+# Play a positioned 3D sound
+positioned = manager.play_p("footstep.ogg", x=10, y=0, z=5)</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Constructor</h2>
+                <div class="method">
+                    <h3>__init__()</h3>
+                    <p>Initialize the Manager with OpenAL context and sound pool.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong> None</p>
+                        <p><strong>Initializes:</strong></p>
+                        <ul>
+                            <li>OpenAL context and listener</li>
+                            <li>Sound pool for oneshot sounds</li>
+                            <li>Global effect and filter slots</li>
+                            <li>Active sound items list</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Basic Playback Methods</h2>
+
+                <div class="method">
+                    <h3>play(filename, looping=False, volume=1.0, pitch=1.0, effects=None, filters=None)</h3>
+                    <p>Play a stationary (non-positioned) sound with optional effects and filters.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>filename</code> (str): Path to audio file</li>
+                            <li><code>looping</code> (bool): Whether to loop the sound</li>
+                            <li><code>volume</code> (float): Volume level (0.0-1.0)</li>
+                            <li><code>pitch</code> (float): Pitch multiplier (0.5-2.0)</li>
+                            <li><code>effects</code> (list): List of effect dictionaries</li>
+                            <li><code>filters</code> (list): List of filter dictionaries</li>
+                        </ul>
+                        <p><strong>Returns:</strong> ManagerItem object</p>
+                    </div>
+                    <div class="code-example">
+                        <pre><code># Basic usage
+sound = manager.play("music.ogg", volume=0.7, looping=True)
+
+# With effects
+sound = manager.play("explosion.ogg", 
+    effects=[
+        {'type': 'reverb', 'preset': 'hall'},
+        {'type': 'distortion', 'edge': 0.3}
+    ]
+)</code></pre>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>play_p(filename, x, y, z, looping=False, volume=1.0, pitch=1.0, effects=None, filters=None)</h3>
+                    <p>Play a positioned 3D sound with optional effects and filters.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>filename</code> (str): Path to audio file</li>
+                            <li><code>x, y, z</code> (float): 3D position coordinates</li>
+                            <li><code>looping</code> (bool): Whether to loop the sound</li>
+                            <li><code>volume</code> (float): Volume level (0.0-1.0)</li>
+                            <li><code>pitch</code> (float): Pitch multiplier (0.5-2.0)</li>
+                            <li><code>effects</code> (list): List of effect dictionaries</li>
+                            <li><code>filters</code> (list): List of filter dictionaries</li>
+                        </ul>
+                        <p><strong>Returns:</strong> ManagerItem object</p>
+                    </div>
+                    <div class="code-example">
+                        <pre><code># Positioned sound
+sound = manager.play_p("footstep.ogg", x=5, y=0, z=10)
+
+# Positioned with effects
+sound = manager.play_p("ambient.ogg", x=0, y=5, z=0,
+    effects=[{'type': 'echo', 'delay': 0.2, 'feedback': 0.4}],
+    looping=True
+)</code></pre>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>play_oneshot(filename, volume=1.0, pitch=1.0)</h3>
+                    <p>Play a fire-and-forget sound using the sound pool for efficient memory management.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>filename</code> (str): Path to audio file</li>
+                            <li><code>volume</code> (float): Volume level (0.0-1.0)</li>
+                            <li><code>pitch</code> (float): Pitch multiplier (0.5-2.0)</li>
+                        </ul>
+                        <p><strong>Returns:</strong> None (fire-and-forget)</p>
+                        <p><strong>Note:</strong> Ideal for UI sounds, gunshots, etc. that don't need individual control.</p>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>play_p_oneshot(filename, x, y, z, volume=1.0, pitch=1.0)</h3>
+                    <p>Play a positioned fire-and-forget sound using the sound pool.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>filename</code> (str): Path to audio file</li>
+                            <li><code>x, y, z</code> (float): 3D position coordinates</li>
+                            <li><code>volume</code> (float): Volume level (0.0-1.0)</li>
+                            <li><code>pitch</code> (float): Pitch multiplier (0.5-2.0)</li>
+                        </ul>
+                        <p><strong>Returns:</strong> None (fire-and-forget)</p>
+                        <p><strong>Note:</strong> Perfect for positioned sound effects like explosions, impacts, etc.</p>
+                    </div>
+                    <div class="code-example">
+                        <pre><code># Fire-and-forget sounds
+manager.play_oneshot("click.ogg", volume=0.5)
+manager.play_oneshot("gunshot.ogg", pitch=1.2)
+
+# Positioned fire-and-forget sounds
+manager.play_p_oneshot("explosion.ogg", x=10, y=0, z=5, volume=1.2)
+manager.play_p_oneshot("footstep.ogg", x=player.x, y=player.y, z=player.z)</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Global Effects Management</h2>
+
+                <div class="method">
+                    <h3>create_global_effect(name, effect_type, **kwargs)</h3>
+                    <p>Create a reusable global audio effect that can be applied to multiple sounds.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>name</code> (str): Unique identifier for the effect</li>
+                            <li><code>effect_type</code> (str): Type of effect (reverb, echo, chorus, etc.)</li>
+                            <li><code>**kwargs</code>: Effect-specific parameters</li>
+                        </ul>
+                        <p><strong>Returns:</strong> True if successful</p>
+                    </div>
+                    <div class="code-example">
+                        <pre><code># Create global effects
+manager.create_global_effect("hall_reverb", "reverb", preset="hall")
+manager.create_global_effect("radio_filter", "distortion", edge=0.8, gain=0.2)
+
+# Apply to sounds
+sound = manager.play("voice.ogg")
+manager.apply_global_effect_to_sound(sound, "hall_reverb")</code></pre>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>create_global_filter(name, filter_type, **kwargs)</h3>
+                    <p>Create a reusable global audio filter.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>name</code> (str): Unique identifier for the filter</li>
+                            <li><code>filter_type</code> (str): Type of filter (lowpass, highpass, bandpass)</li>
+                            <li><code>**kwargs</code>: Filter-specific parameters</li>
+                        </ul>
+                        <p><strong>Returns:</strong> True if successful</p>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>apply_room_acoustics(room_type="room")</h3>
+                    <p>Apply room acoustics simulation to all currently playing sounds.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>room_type</code> (str): Type of room acoustics</li>
+                        </ul>
+                        <p><strong>Available room types:</strong> room, hall, cathedral, bathroom, cave, arena</p>
+                    </div>
+                    <div class="code-example">
+                        <pre><code># Apply room acoustics to all sounds
+manager.apply_room_acoustics("cathedral")
+manager.apply_room_acoustics("underwater")</code></pre>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>apply_environmental_filter(environment="clear")</h3>
+                    <p>Apply environmental filtering to all currently playing sounds.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>environment</code> (str): Environmental filter preset</li>
+                        </ul>
+                        <p><strong>Available environments:</strong> clear, radio, telephone, muffled, thin, underwater</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Listener and Position Management</h2>
+
+                <div class="method">
+                    <h3>update(x, y, z)</h3>
+                    <p>Update listener position and notify all positioned sounds for distance calculations.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>x, y, z</code> (float): New listener position</li>
+                        </ul>
+                    </div>
+                    <div class="code-example">
+                        <pre><code># In game loop
+manager.update(player.x, player.y, player.z)</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Memory Management</h2>
+
+                <div class="method">
+                    <h3>clean()</h3>
+                    <p>Remove finished sounds from memory to prevent memory leaks.</p>
+                    <div class="method-details">
+                        <p><strong>Note:</strong> Should be called periodically in game loops.</p>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>destroy_all()</h3>
+                    <p>Destroy all sounds and clean up all resources.</p>
+                    <div class="method-details">
+                        <p><strong>Note:</strong> Call when shutting down the application.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Information Methods</h2>
+
+                <div class="method">
+                    <h3>get_available_effects()</h3>
+                    <p>Get list of all available audio effect types.</p>
+                    <div class="method-details">
+                        <p><strong>Returns:</strong> List of effect type strings</p>
+                        <p><strong>Available effects:</strong> reverb, distortion, echo, chorus, flanger, pitch_shift, auto_wah, compressor, equalizer</p>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>get_available_filters()</h3>
+                    <p>Get list of all available audio filter types.</p>
+                    <div class="method-details">
+                        <p><strong>Returns:</strong> List of filter type strings</p>
+                        <p><strong>Available filters:</strong> lowpass, highpass, bandpass</p>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>get_reverb_presets()</h3>
+                    <p>Get list of all available reverb presets.</p>
+                    <div class="method-details">
+                        <p><strong>Returns:</strong> List of reverb preset names</p>
+                        <p><strong>Available presets:</strong> small_room, medium_room, large_hall, auditorium, underwater</p>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>get_filter_presets()</h3>
+                    <p>Get list of all available filter presets.</p>
+                    <div class="method-details">
+                        <p><strong>Returns:</strong> List of filter preset names</p>
+                        <p><strong>Available presets:</strong> radio, telephone, muffled, thin, underwater, clear</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Properties</h2>
+
+                <div class="property">
+                    <h3>listener</h3>
+                    <p>Access to the OpenAL listener object for advanced 3D audio control.</p>
+                </div>
+
+                <div class="property">
+                    <h3>items</h3>
+                    <p>List of active ManagerItem objects representing currently loaded sounds.</p>
+                </div>
+
+                <div class="property">
+                    <h3>sound_pool</h3>
+                    <p>SoundPool instance for oneshot sound management.</p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>ManagerItem Class</h2>
+                <p>Individual sound items returned by play methods with position and distance management.</p>
+
+                <h3>Key Methods</h3>
+                <div class="method-grid">
+                    <div class="method">
+                        <h4>play() / pause() / stop()</h4>
+                        <p>Basic playback control</p>
+                    </div>
+                    <div class="method">
+                        <h4>set_position(x, y, z)</h4>
+                        <p>Update 3D position</p>
+                    </div>
+                    <div class="method">
+                        <h4>set_max_distance(distance)</h4>
+                        <p>Set distance-based muting</p>
+                    </div>
+                    <div class="method">
+                        <h4>get_distance_to_listener()</h4>
+                        <p>Calculate distance to listener</p>
+                    </div>
+                </div>
+
+                <h3>Key Properties</h3>
+                <ul>
+                    <li><code>is_playing</code> - Check if currently playing</li>
+                    <li><code>paused</code> - Check if paused</li>
+                    <li><code>x, y, z</code> - 3D position coordinates</li>
+                    <li><code>volume, pitch</code> - Audio parameters</li>
+                </ul>
+            </section>
+
+            <section class="section">
+                <h2>Complete Example</h2>
+                <div class="code-example">
+                    <pre><code>from al_manager import Manager
+import time
+
+# Initialize manager
+manager = Manager()
+
+# Create global effects
+manager.create_global_effect("cave_reverb", "reverb", preset="cave")
+manager.create_global_filter("underwater", "lowpass", gain=0.8, gainhf=0.3)
+
+# Play background music
+music = manager.play("background.ogg", volume=0.6, looping=True)
+
+# Play positioned ambient sounds
+water = manager.play_p("water.ogg", x=10, y=0, z=5, looping=True)
+fire = manager.play_p("fire.ogg", x=-5, y=0, z=8, looping=True)
+
+# Apply environmental effects
+manager.apply_global_effect_to_sound(water, "cave_reverb")
+fire.hd.add_effect('chorus', rate=0.8, depth=0.1)
+
+# Simulate player movement
+for i in range(100):
+    # Update listener position
+    manager.update(i * 0.1, 0, 0)
+    
+    # Play occasional oneshots
+    if i % 20 == 0:
+        manager.play_oneshot("footstep.ogg", volume=0.4)
+    
+    # Clean up finished sounds
+    manager.clean()
+    time.sleep(0.1)
+
+# Cleanup
+manager.destroy_all()</code></pre>
+                </div>
+            </section>
+        </div>
+    </div>
+</body>
+</html>

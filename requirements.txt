@@ -1,0 +1,4 @@
+cyal
+pyogg
+pydub
+requests

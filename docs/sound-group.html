@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"="width=device-width, initial-scale=1.0">
+    <title>Sound Groups - AL Manager Documentation</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="nav-header">
+            <h3><a href="index.html">AL Manager</a></h3>
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="manager.html">Manager</a></li>
+            <li><a href="sound.html">Sound Classes</a></li>
+            <li><a href="effects.html">Effects System</a></li>
+            <li><a href="sound-group.html" class="active">Sound Groups</a></li>
+            <li><a href="sound-pool.html">Sound Pool</a></li>
+            <li><a href="utilities.html">Utilities</a></li>
+        </ul>
+    </nav>
+
+    <div class="content">
+        <div class="container">
+            <h1>Sound Groups</h1>
+            <p class="lead">Entity-based sound management system for games with automatic positioning, state control, and sound variations.</p>
+
+            <section class="section">
+                <h2>Overview</h2>
+                <p>Sound Groups provide a high-level abstraction for managing multiple sounds associated with game entities (players, NPCs, enemies, objects). Each SoundGroup can contain multiple named sounds that automatically track the entity's position and state.</p>
+                
+                <h3>Key Features</h3>
+                <ul>
+                    <li><strong>Entity Association:</strong> Link sounds to game entities with automatic tracking</li>
+                    <li><strong>Position Management:</strong> Automatic 3D position updates for all sounds in the group</li>
+                    <li><strong>Sound Variations:</strong> Random variations of sounds for realistic audio</li>
+                    <li><strong>State Control:</strong> Enable/disable entire sound groups based on game state</li>
+                    <li><strong>Volume Management:</strong> Global and per-sound volume control</li>
+                    <li><strong>Effect Application:</strong> Apply environmental effects to all sounds in a group</li>
+                </ul>
+            </section>
+
+            <section class="section">
+                <h2>SoundGroup Class</h2>
+
+                <div class="method">
+                    <h3>__init__(manager, entity_id=None)</h3>
+                    <p>Initialize a new sound group for an entity.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>manager</code> - AL Manager instance</li>
+                            <li><code>entity_id</code> (str) - Unique identifier for the entity</li>
+                        </ul>
+                    </div>
+                    <div class="code-example">
+                        <h4>Basic Setup</h4>
+                        <pre><code>from al_manager import Manager
+from al_manager.sound_group import SoundGroup
+
+manager = Manager()
+
+# Create sound group for player
+player_sounds = SoundGroup(manager, entity_id="player_01")
+
+# Create sound group for enemy
+enemy_sounds = SoundGroup(manager, entity_id="orc_warrior")</code></pre>
+                    </div>
+                </div>
+
+                <h3>Position Management</h3>
+                <div class="method">
+                    <h3>set_position(x, y, z)</h3>
+                    <p>Update the 3D position of the entire sound group.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>x, y, z</code> (float) - New 3D coordinates</li>
+                        </ul>
+                        <p><strong>Note:</strong> Updates all positioned sounds in the group automatically.</p>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>set_position_callback(callback)</h3>
+                    <p>Set a callback function for automatic position updates.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>callback</code> - Function that returns (x, y, z) tuple</li>
+                        </ul>
+                    </div>
+                    <div class="code-example">
+                        <h4>Automatic Position Tracking</h4>
+                        <pre><code># Link to game entity
+class Player:
+    def __init__(self):
+        self.x, self.y, self.z = 0, 0, 0
+
+player = Player()
+player_sounds = SoundGroup(manager, "player")
+
+# Set automatic position callback
+player_sounds.set_position_callback(lambda: (player.x, player.y, player.z))
+
+# Enable auto-update
+player_sounds.auto_update_position = True
+
+# Now all sounds in the group follow the player automatically</code></pre>
+                    </div>
+                </div>
+
+                <h3>Sound Management</h3>
+                <div class="method">
+                    <h3>add_sound(name, file_path, effects=None, filters=None, volume=1.0, pitch=1.0, looping=False, positioned=True, autoplay=False)</h3>
+                    <p>Add a named sound to the group with optional configuration.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>name</code> (str) - Unique name for the sound within the group</li>
+                            <li><code>file_path</code> (str) - Path to audio file</li>
+                            <li><code>effects</code> (list) - List of effect dictionaries</li>
+                            <li><code>filters</code> (list) - List of filter dictionaries</li>
+                            <li><code>volume</code> (float) - Base volume (0.0-1.0)</li>
+                            <li><code>pitch</code> (float) - Base pitch (0.5-2.0)</li>
+                            <li><code>looping</code> (bool) - Whether sound should loop</li>
+                            <li><code>positioned</code> (bool) - Whether sound uses 3D positioning</li>
+                            <li><code>autoplay</code> (bool) - Whether to instantly play the sound after adding it</li>
+                        </ul>
+                    </div>
+                    <div class="code-example">
+                        <h4>Adding Sounds to Group</h4>
+                        <pre><code># Add various character sounds
+player_sounds.add_sound("footstep", "audio/footstep.ogg", 
+                       volume=0.6, positioned=True)
+
+player_sounds.add_sound("jump", "audio/jump.wav", 
+                       volume=0.8, positioned=True)
+
+player_sounds.add_sound("hurt", "audio/hurt_grunt.ogg",
+                       effects=[{'type': 'distortion', 'edge': 0.1}],
+                       volume=0.9)
+
+player_sounds.add_sound("breathing", "audio/breathing.ogg",
+                       looping=True, volume=0.3, positioned=False)
+
+# Add and immediately play background music
+player_sounds.add_sound("theme_music", "audio/theme.ogg",
+                       looping=True, volume=0.5, positioned=False, 
+                       autoplay=True)
+
+# Add instant feedback sound
+player_sounds.add_sound("pickup", "audio/coin.ogg",
+                       volume=0.7, autoplay=True)</code></pre>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>add_sound_variation(base_name, variation_path, autoplay=False)</h3>
+                    <p>Add a variation of an existing sound for randomized playback.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>base_name</code> (str) - Name of the base sound</li>
+                            <li><code>variation_path</code> (str) - Path to variation audio file</li>
+                            <li><code>autoplay</code> (bool) - Whether to instantly play this variation after adding it</li>
+                        </ul>
+                    </div>
+                    <div class="code-example">
+                        <h4>Sound Variations</h4>
+                        <pre><code># Add base footstep sound
+player_sounds.add_sound("footstep", "audio/step1.ogg")
+
+# Add variations for realistic variety
+player_sounds.add_sound_variation("footstep", "audio/step2.ogg")
+player_sounds.add_sound_variation("footstep", "audio/step3.ogg")
+player_sounds.add_sound_variation("footstep", "audio/step4.ogg")
+
+# Add and immediately test a variation
+player_sounds.add_sound_variation("footstep", "audio/step_metal.ogg", autoplay=True)
+
+# When playing "footstep", a random variation is chosen</code></pre>
+                    </div>
+                </div>
+
+                <h3>Playback Control</h3>
+                <div class="method">
+                    <h3>play_sound(name, override_volume=None, override_pitch=None, override_effects=None, stop_existing=False)</h3>
+                    <p>Play a specific sound by name with optional parameter overrides.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>name</code> (str) - Name of sound to play</li>
+                            <li><code>override_volume</code> (float) - Temporary volume override</li>
+                            <li><code>override_pitch</code> (float) - Temporary pitch override</li>
+                            <li><code>override_effects</code> (list) - Additional effects to apply</li>
+                            <li><code>stop_existing</code> (bool) - Stop any existing instance of this sound</li>
+                        </ul>
+                        <p><strong>Returns:</strong> ManagerItem object for the played sound</p>
+                    </div>
+                    <div class="code-example">
+                        <h4>Playing Sounds</h4>
+                        <pre><code># Basic sound playback
+player_sounds.play_sound("footstep")
+
+# With volume override (for running vs walking)
+player_sounds.play_sound("footstep", override_volume=1.2)
+
+# With pitch variation (for different surfaces)
+player_sounds.play_sound("footstep", override_pitch=0.8)
+
+# Stop existing and play new (for rapid actions)
+player_sounds.play_sound("hurt", stop_existing=True)</code></pre>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>play_random_sound(**kwargs)</h3>
+                    <p>Play a random sound from the group with optional parameters.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong> Same as play_sound()</p>
+                        <p><strong>Returns:</strong> ManagerItem object or None if no sounds available</p>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>stop_sound(name)</h3>
+                    <p>Stop a specific sound by name.</p>
+                </div>
+
+                <div class="method">
+                    <h3>stop_all_sounds()</h3>
+                    <p>Stop all currently playing sounds in the group.</p>
+                </div>
+
+                <h3>State Management</h3>
+                <div class="method">
+                    <h3>enable() / disable()</h3>
+                    <p>Enable or disable the entire sound group.</p>
+                    <div class="method-details">
+                        <p><strong>Note:</strong> When disabled, all sounds stop and new sounds won't play until re-enabled.</p>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>set_global_volume(volume)</h3>
+                    <p>Set a global volume multiplier for all sounds in the group.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>volume</code> (float) - Global volume multiplier (0.0-1.0)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3>Environmental Effects</h3>
+                <div class="method">
+                    <h3>apply_environmental_effect(effect_name)</h3>
+                    <p>Apply an environmental effect to all sounds in the group.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>effect_name</code> (str) - Name of global effect to apply</li>
+                        </ul>
+                    </div>
+                    <div class="code-example">
+                        <h4>Environmental Effects</h4>
+                        <pre><code># Create global cave effect
+manager.create_global_effect("cave_echo", "reverb", preset="cave")
+
+# Apply to entire sound group
+player_sounds.apply_environmental_effect("cave_echo")
+
+# All current and future sounds in group now have cave reverb</code></pre>
+                    </div>
+                </div>
+
+                <h3>Information and Maintenance</h3>
+                <div class="method">
+                    <h3>is_playing(name)</h3>
+                    <p>Check if a specific sound is currently playing.</p>
+                    <div class="method-details">
+                        <p><strong>Returns:</strong> True if any instance of the named sound is playing</p>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>cleanup_finished_sounds()</h3>
+                    <p>Remove finished sounds from the active list to prevent memory leaks.</p>
+                    <div class="method-details">
+                        <p><strong>Note:</strong> Should be called periodically in game loops.</p>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>get_info()</h3>
+                    <p>Get detailed information about the sound group.</p>
+                    <div class="method-details">
+                        <p><strong>Returns:</strong> Dictionary with group status, sound count, active sounds, etc.</p>
+                    </div>
+                </div>
+
+                <h3>Properties</h3>
+                <div class="property">
+                    <h3>entity_id</h3>
+                    <p>Unique identifier for this entity.</p>
+                </div>
+
+                <div class="property">
+                    <h3>x, y, z</h3>
+                    <p>Current 3D position coordinates.</p>
+                </div>
+
+                <div class="property">
+                    <h3>is_enabled</h3>
+                    <p>Whether the group is currently enabled for playback.</p>
+                </div>
+
+                <div class="property">
+                    <h3>global_volume</h3>
+                    <p>Global volume multiplier for all sounds in the group.</p>
+                </div>
+
+                <div class="property">
+                    <h3>pitch_variation</h3>
+                    <p>Random pitch variation range (default: 0.1).</p>
+                </div>
+
+                <div class="property">
+                    <h3>volume_variation</h3>
+                    <p>Random volume variation range (default: 0.1).</p>
+                </div>
+
+                <div class="property">
+                    <h3>auto_update_position</h3>
+                    <p>Whether to automatically update position using callback.</p>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Convenience Functions</h2>
+                <p>Pre-configured sound group creators for common game entity types.</p>
+
+                <div class="method">
+                    <h3>create_player_sound_group(manager, entity_id="player")</h3>
+                    <p>Create a pre-configured sound group optimized for player characters.</p>
+                    <div class="method-details">
+                        <p><strong>Features:</strong></p>
+                        <ul>
+                            <li>Optimized volume settings for player proximity</li>
+                            <li>Reduced pitch variation for consistency</li>
+                            <li>Enhanced effects for player feedback</li>
+                        </ul>
+                    </div>
+                    <div class="code-example">
+                        <h4>Player Sound Group</h4>
+                        <pre><code>from al_manager.sound_group import create_player_sound_group
+
+# Create optimized player sound group
+player_sounds = create_player_sound_group(manager, "player")
+
+# Add player-specific sounds
+player_sounds.add_sound("walk", "player/walk.ogg")
+player_sounds.add_sound("run", "player/run.ogg") 
+player_sounds.add_sound("jump", "player/jump.ogg")
+player_sounds.add_sound("land", "player/land.ogg")
+player_sounds.add_sound("attack", "player/sword_swing.ogg")</code></pre>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>create_enemy_sound_group(manager, entity_id, enemy_type="generic")</h3>
+                    <p>Create a sound group optimized for enemy characters.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>enemy_type</code> - Type of enemy for specialized settings</li>
+                        </ul>
+                        <p><strong>Features:</strong></p>
+                        <ul>
+                            <li>Higher pitch variation for variety</li>
+                            <li>Distance-based volume scaling</li>
+                            <li>Aggressive effect presets</li>
+                        </ul>
+                    </div>
+                    <div class="code-example">
+                        <h4>Enemy Sound Groups</h4>
+                        <pre><code>from al_manager.sound_group import create_enemy_sound_group
+
+# Create different enemy types
+orc_sounds = create_enemy_sound_group(manager, "orc_01", "orc")
+skeleton_sounds = create_enemy_sound_group(manager, "skel_01", "undead")
+
+# Add enemy-specific sounds
+orc_sounds.add_sound("growl", "enemies/orc_growl.ogg")
+orc_sounds.add_sound("attack", "enemies/orc_attack.ogg")
+orc_sounds.add_sound("death", "enemies/orc_death.ogg")</code></pre>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>create_npc_sound_group(manager, entity_id)</h3>
+                    <p>Create a sound group optimized for non-player characters.</p>
+                    <div class="method-details">
+                        <p><strong>Features:</strong></p>
+                        <li>Moderate volume settings</li>
+                        <li>Minimal pitch variation for clarity</li>
+                        <li>Speech-optimized effects</li>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Advanced Usage Patterns</h2>
+
+                <h3>Dynamic State-Based Audio</h3>
+                <div class="code-example">
+                    <h4>State-Responsive Sound Groups</h4>
+                    <pre><code>class Character:
+    def __init__(self, manager):
+        self.sound_group = SoundGroup(manager, self.id)
+        self.state = "idle"
+        self.health = 100
+        
+    def update_audio_state(self):
+        # Adjust audio based on character state
+        if self.state == "combat":
+            self.sound_group.set_global_volume(1.2)
+            self.sound_group.pitch_variation = 0.15
+        elif self.state == "stealth":
+            self.sound_group.set_global_volume(0.3)
+            self.sound_group.apply_environmental_effect("muffled")
+        elif self.health < 25:
+            # Injured audio processing
+            self.sound_group.pitch_variation = 0.2
+            manager.create_global_effect("pain_distortion", "distortion", edge=0.2)
+            self.sound_group.apply_environmental_effect("pain_distortion")
+    
+    def move(self, surface_type="grass"):
+        # Different footstep sounds based on surface
+        if surface_type == "metal":
+            self.sound_group.play_sound("footstep", override_pitch=1.3,
+                override_effects=[{'type': 'reverb', 'preset': 'hall'}])
+        else:
+            self.sound_group.play_sound("footstep")</code></pre>
+                </div>
+
+                <h3>Group Coordination</h3>
+                <div class="code-example">
+                    <h4>Coordinated Audio Events</h4>
+                    <pre><code># Coordinate multiple sound groups for events
+class AudioEventManager:
+    def __init__(self, manager):
+        self.manager = manager
+        self.character_groups = {}
+        
+    def add_character_group(self, character_id, sound_group):
+        self.character_groups[character_id] = sound_group
+    
+    def trigger_explosion(self, x, y, z, radius=30):
+        # Play explosion sound
+        explosion = self.manager.play_p("explosion.ogg", x, y, z)
+        explosion.add_effect('reverb', preset='arena')
+        
+        # Apply effects to nearby characters
+        for char_id, group in self.character_groups.items():
+            distance = math.sqrt((group.x - x)**2 + (group.y - y)**2 + (group.z - z)**2)
+            
+            if distance < radius:
+                # Close to explosion - apply shellshock effects
+                effect_strength = 1.0 - (distance / radius)
+                
+                group.set_global_volume(0.2 + effect_strength * 0.8)
+                
+                if effect_strength > 0.7:
+                    # Strong effect - hearing damage simulation
+                    manager.create_global_filter(f"shellshock_{char_id}", 
+                        "lowpass", gain=0.3, gainhf=0.1)
+                    group.apply_environmental_effect(f"shellshock_{char_id}")
+    
+    def environmental_transition(self, area_type):
+        # Apply environmental changes to all characters
+        if area_type == "underwater":
+            for group in self.character_groups.values():
+                group.apply_environmental_effect("underwater_reverb")
+                group.set_global_volume(0.6)
+        elif area_type == "cave":
+            for group in self.character_groups.values():
+                group.apply_environmental_effect("cave_echo")</code></pre>
+                </div>
+
+                <h3>Performance Optimization</h3>
+                <div class="code-example">
+                    <h4>Efficient Sound Group Management</h4>
+                    <pre><code>class OptimizedSoundGroup(SoundGroup):
+    def __init__(self, manager, entity_id, max_concurrent_sounds=5):
+        super().__init__(manager, entity_id)
+        self.max_concurrent_sounds = max_concurrent_sounds
+        self.sound_priorities = {}
+        
+    def add_sound(self, name, file_path, priority=1, **kwargs):
+        # Add priority tracking
+        super().add_sound(name, file_path, **kwargs)
+        self.sound_priorities[name] = priority
+    
+    def play_sound(self, name, **kwargs):
+        # Limit concurrent sounds based on priority
+        if len(self.active_sounds) >= self.max_concurrent_sounds:
+            # Find lowest priority active sound
+            lowest_priority = min(self.active_sounds.keys(), 
+                                key=lambda x: self.sound_priorities.get(x, 0))
+            
+            if self.sound_priorities[name] > self.sound_priorities[lowest_priority]:
+                self.stop_sound(lowest_priority)
+            else:
+                return None  # Don't play if priority too low
+        
+        return super().play_sound(name, **kwargs)
+    
+    def update_performance(self, distance_to_listener):
+        # Adjust quality based on distance
+        if distance_to_listener > 50:
+            self.set_global_volume(0.1)
+            # Reduce effect complexity for distant sounds
+        elif distance_to_listener > 20:
+            self.set_global_volume(0.5)
+        else:
+            self.set_global_volume(1.0)</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Game Integration Example</h2>
+                <div class="code-example">
+                    <pre><code>from al_manager import Manager
+from al_manager.sound_group import create_player_sound_group, create_enemy_sound_group
+
+class GameAudioSystem:
+    def __init__(self):
+        self.manager = Manager()
+        self.sound_groups = {}
+        
+        # Create global environmental effects
+        self.setup_global_effects()
+    
+    def setup_global_effects(self):
+        self.manager.create_global_effect("indoor_reverb", "reverb", preset="medium_room")
+        self.manager.create_global_effect("outdoor_reverb", "reverb", preset="large_hall")
+        self.manager.create_global_effect("underwater_effect", "chorus", 
+                                        rate=0.2, depth=0.6, feedback=0.3)
+        self.manager.create_global_filter("distance_filter", "lowpass", 
+                                        gain=0.7, gainhf=0.3)
+    
+    def create_player(self, player_id):
+        # Create player sound group with full range of sounds
+        group = create_player_sound_group(self.manager, player_id)
+        
+        # Add all player sounds with variations
+        group.add_sound("walk", "player/walk1.ogg")
+        group.add_sound_variation("walk", "player/walk2.ogg")
+        group.add_sound_variation("walk", "player/walk3.ogg")
+        
+        group.add_sound("run", "player/run.ogg", volume=0.8)
+        group.add_sound("jump", "player/jump.ogg")
+        group.add_sound("land", "player/land.ogg")
+        group.add_sound("hurt", "player/hurt.ogg", volume=1.1)
+        
+        # UI sounds (non-positioned)
+        group.add_sound("menu_click", "ui/click.ogg", positioned=False, volume=0.6)
+        group.add_sound("pickup", "ui/pickup.ogg", positioned=False)
+        
+        self.sound_groups[player_id] = group
+        return group
+    
+    def create_enemy(self, enemy_id, enemy_type):
+        group = create_enemy_sound_group(self.manager, enemy_id, enemy_type)
+        
+        # Enemy-specific sound sets
+        if enemy_type == "orc":
+            group.add_sound("idle", "enemies/orc_idle.ogg", looping=True, volume=0.4)
+            group.add_sound("alert", "enemies/orc_alert.ogg")
+            group.add_sound("attack", "enemies/orc_attack.ogg")
+            group.add_sound("hurt", "enemies/orc_hurt.ogg")
+            group.add_sound("death", "enemies/orc_death.ogg")
+        elif enemy_type == "skeleton":
+            group.add_sound("rattle", "enemies/bone_rattle.ogg", looping=True, volume=0.3)
+            group.add_sound("attack", "enemies/bone_attack.ogg")
+            
+        self.sound_groups[enemy_id] = group
+        return group
+    
+    def update(self, dt):
+        # Update all sound groups
+        for group in self.sound_groups.values():
+            group.cleanup_finished_sounds()
+        
+        # Update manager
+        self.manager.clean()
+    
+    def set_environment(self, environment_type):
+        if environment_type == "indoor":
+            for group in self.sound_groups.values():
+                group.apply_environmental_effect("indoor_reverb")
+        elif environment_type == "outdoor":
+            for group in self.sound_groups.values():
+                group.apply_environmental_effect("outdoor_reverb")
+        elif environment_type == "underwater":
+            self.manager.apply_environmental_filter("underwater")
+            for group in self.sound_groups.values():
+                group.apply_environmental_effect("underwater_effect")
+    
+    def handle_player_action(self, player_id, action, **kwargs):
+        group = self.sound_groups.get(player_id)
+        if not group:
+            return
+            
+        if action == "walk":
+            surface = kwargs.get("surface", "grass")
+            if surface == "metal":
+                group.play_sound("walk", override_pitch=1.2)
+            else:
+                group.play_sound("walk")
+        elif action == "jump":
+            group.play_sound("jump")
+        elif action == "hurt":
+            group.play_sound("hurt", stop_existing=True)
+            # Add temporary pain effects
+            self.manager.create_global_filter(f"pain_{player_id}", 
+                "highpass", gainlf=0.5)
+            group.apply_environmental_effect(f"pain_{player_id}")
+
+# Usage in game loop
+audio_system = GameAudioSystem()
+
+# Create entities
+player_audio = audio_system.create_player("player1")
+enemy_audio = audio_system.create_enemy("orc1", "orc")
+
+# Link to game entities
+player_audio.set_position_callback(lambda: player.get_position())
+enemy_audio.set_position_callback(lambda: enemy.get_position())
+
+# Game loop
+while game_running:
+    # Update audio system
+    audio_system.update(dt)
+    
+    # Handle events
+    if player.is_walking:
+        audio_system.handle_player_action("player1", "walk", 
+                                         surface=current_surface)
+    
+    # Environment changes
+    if entered_cave:
+        audio_system.set_environment("indoor")
+    
+    # Update listener position
+    audio_system.manager.update(*player.get_position())</code></pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Best Practices</h2>
+                <ul>
+                    <li><strong>Entity Lifecycle:</strong> Create sound groups when entities spawn, destroy when they despawn</li>
+                    <li><strong>Position Updates:</strong> Use callbacks for automatic position tracking rather than manual updates</li>
+                    <li><strong>Memory Management:</strong> Call cleanup_finished_sounds() regularly to prevent memory leaks</li>
+                    <li><strong>Effect Sharing:</strong> Use global effects for environmental processing across multiple groups</li>
+                    <li><strong>Performance:</strong> Limit concurrent sounds per group for distant or less important entities</li>
+                    <li><strong>Variations:</strong> Add multiple variations of common sounds (footsteps, attacks) for realism</li>
+                    <li><strong>State Integration:</strong> Tie sound group properties to game state (health, combat mode, etc.)</li>
+                    <li><strong>Priority System:</strong> Implement sound priorities to handle audio overload situations</li>
+                </ul>
+
+                <div class="warning">
+                    <strong>Memory Consideration:</strong> Sound groups maintain references to active sounds. 
+                    Regular cleanup and proper lifecycle management are important for preventing memory leaks in long-running games.
+                </div>
+            </section>
+        </div>
+    </div>
+</body>
+</html>
