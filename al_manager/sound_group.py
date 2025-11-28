@@ -29,6 +29,9 @@ class SoundGroup:
         self.manager = manager
         self.entity_id = entity_id or f"entity_{id(self)}"
         
+        # Auto-register with manager for automatic cleanup
+        self.manager.register_sound_group(self)
+        
         # Position tracking
         self.x = 0.0
         self.y = 0.0
@@ -68,8 +71,12 @@ class SoundGroup:
         
         # Update all active positioned sounds
         for sound_item in self.active_sounds.values():
-            if sound_item and hasattr(sound_item, 'set_position'):
-                sound_item.set_position(x, y, z)
+            if sound_item:
+                try:
+                    # ManagerItem has set_position method
+                    sound_item.set_position(x, y, z)
+                except Exception as e:
+                    print(f"Warning: Error updating position for sound in group {self.entity_id}: {e}")
     
     def set_position_callback(self, callback: Callable[[], Tuple[float, float, float]]):
         """
@@ -279,6 +286,24 @@ class SoundGroup:
                 self.manager.destroy(sound_item)
         self.active_sounds.clear()
     
+    def pause_all_sounds(self):
+        """Pause all currently playing sounds."""
+        for sound_item in self.active_sounds.values():
+            if sound_item:
+                try:
+                    sound_item.pause()
+                except Exception as e:
+                    print(f"Warning: Error pausing sound in group {self.entity_id}: {e}")
+    
+    def resume_all_sounds(self):
+        """Resume all currently paused sounds."""
+        for sound_item in self.active_sounds.values():
+            if sound_item:
+                try:
+                    sound_item.play()
+                except Exception as e:
+                    print(f"Warning: Error resuming sound in group {self.entity_id}: {e}")
+    
     
     def set_global_volume(self, volume: float):
         """Set global volume for this sound group."""
@@ -297,7 +322,11 @@ class SoundGroup:
         """Check if a specific sound is currently playing."""
         if name in self.active_sounds:
             sound_item = self.active_sounds[name]
-            return sound_item and getattr(sound_item, 'is_playing', False)
+            if sound_item:
+                try:
+                    return sound_item.is_playing
+                except:
+                    return False
         return False
     
     def get_active_sounds_count(self) -> int:
@@ -308,8 +337,14 @@ class SoundGroup:
         """Remove finished (non-looping) sounds from active list."""
         to_remove = []
         for sound_name, sound_item in self.active_sounds.items():
-            if sound_item and hasattr(sound_item, 'is_playing'):
-                if not sound_item.is_playing and not getattr(sound_item, 'paused', False):
+            if sound_item:
+                try:
+                    # ManagerItem has is_playing and paused properties
+                    if not sound_item.is_playing and not sound_item.paused:
+                        to_remove.append(sound_name)
+                except Exception as e:
+                    # If we can't check status, remove the sound item
+                    print(f"Warning: Error checking sound status in group {self.entity_id}: {e}")
                     to_remove.append(sound_name)
         
         for name in to_remove:
@@ -319,16 +354,17 @@ class SoundGroup:
         """Calculate distance to the listener."""
         try:
             # Get listener position from manager
-            listener_x = getattr(self.manager, 'x', 0.0)
-            listener_y = getattr(self.manager, 'y', 0.0)
-            listener_z = getattr(self.manager, 'z', 0.0)
+            listener_x = self.manager.last_x
+            listener_y = self.manager.last_y
+            listener_z = self.manager.last_z
             
             dx = self.x - listener_x
             dy = self.y - listener_y
             dz = self.z - listener_z
             
             return math.sqrt(dx*dx + dy*dy + dz*dz)
-        except:
+        except Exception as e:
+            print(f"Warning: Error calculating distance in group {self.entity_id}: {e}")
             return 0.0
     
     def apply_environmental_effect(self, effect_name: str):
@@ -337,20 +373,22 @@ class SoundGroup:
             effect_config = self.distance_effects[effect_name]
             
             for sound_item in self.active_sounds.values():
-                if sound_item and hasattr(sound_item, 'hd'):
+                if sound_item:
                     # Apply effects
                     for effect in effect_config.get('effects', []):
                         try:
+                            # ManagerItem has hd property
                             sound_item.hd.add_effect(**effect)
-                        except:
-                            pass
+                        except Exception as e:
+                            print(f"Warning: Error applying effect to sound in group {self.entity_id}: {e}")
                     
                     # Apply filters
                     for filter_config in effect_config.get('filters', []):
                         try:
+                            # ManagerItem has hd property
                             sound_item.hd.add_filter(**filter_config)
-                        except:
-                            pass
+                        except Exception as e:
+                            print(f"Warning: Error applying filter to sound in group {self.entity_id}: {e}")
     
     def get_info(self) -> Dict[str, Any]:
         """Get information about this sound group."""
@@ -363,6 +401,19 @@ class SoundGroup:
             'active_sounds_count': self.get_active_sounds_count(),
             'auto_update_position': self.auto_update_position
         }
+    
+    def destroy(self):
+        """Properly destroy this sound group and clean up all resources."""
+        # Stop all active sounds
+        self.stop_all_sounds()
+        
+        # Unregister from manager
+        self.manager.unregister_sound_group(self)
+        
+        # Clear references
+        self.sounds.clear()
+        self.active_sounds.clear()
+        self.position_callback = None
 
 # Convenience functions for common game entity types
 

@@ -236,6 +236,34 @@ manager.apply_room_acoustics("underwater")</code></pre>
             </section>
 
             <section class="section">
+                <h2>Sound Group Management</h2>
+
+                <div class="method">
+                    <h3>register_sound_group(sound_group)</h3>
+                    <p>Register a sound group for automatic cleanup management.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>sound_group</code> (SoundGroup): Sound group instance to register</li>
+                        </ul>
+                        <p><strong>Note:</strong> Sound groups automatically register themselves when created, so manual registration is rarely needed.</p>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>unregister_sound_group(sound_group)</h3>
+                    <p>Unregister a sound group from automatic cleanup management.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>sound_group</code> (SoundGroup): Sound group instance to unregister</li>
+                        </ul>
+                        <p><strong>Note:</strong> Called automatically when sound_group.destroy() is used.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
                 <h2>Listener and Position Management</h2>
 
                 <div class="method">
@@ -261,15 +289,76 @@ manager.update(player.x, player.y, player.z)</code></pre>
                     <h3>clean()</h3>
                     <p>Remove finished sounds from memory to prevent memory leaks.</p>
                     <div class="method-details">
-                        <p><strong>Note:</strong> Should be called periodically in game loops.</p>
+                        <p><strong>Note:</strong> <em>Automatically called every 10 sound plays</em>. Manual calls are available if immediate cleanup is needed or performance issues arise.</p>
                     </div>
                 </div>
 
                 <div class="method">
-                    <h3>destroy_all()</h3>
+                    <h3>cleanup_finished_sounds()</h3>
+                    <p>Comprehensive cleanup of all finished sounds including sound pool and registered sound groups.</p>
+                    <div class="method-details">
+                        <p><strong>Note:</strong> <em>Automatic cleanup every 10 sound plays</em> - The manager automatically performs this cleanup. Manual calls are available for immediate cleanup if performance issues arise or immediate memory recovery is needed.</p>
+                    </div>
+                    <div class="code-example">
+                        <pre><code># No cleanup needed in game loop - it's automatic!
+def update():
+    # Just play sounds normally - cleanup happens automatically
+    manager.play("sound.ogg")
+    
+    # Optional: Force immediate cleanup if needed
+    # manager.cleanup_finished_sounds()</code></pre>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>destroy_all(include_soundgroups=True)</h3>
                     <p>Destroy all sounds and clean up all resources.</p>
                     <div class="method-details">
-                        <p><strong>Note:</strong> Call when shutting down the application.</p>
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>include_soundgroups</code> (bool): Whether to also destroy all registered sound groups</li>
+                        </ul>
+                        <p><strong>Note:</strong> Call when shutting down the application. By default, this will also destroy all sound groups.</p>
+                    </div>
+                    <div class="code-example">
+                        <pre><code># Destroy everything including sound groups (default)
+manager.destroy_all()
+
+# Destroy only manager sounds, keep sound groups
+manager.destroy_all(include_soundgroups=False)</code></pre>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>pause_all(include_soundgroups=True)</h3>
+                    <p>Pause all currently playing sounds.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>include_soundgroups</code> (bool): Whether to also pause all registered sound groups</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>resume_all(include_soundgroups=True)</h3>
+                    <p>Resume all currently paused sounds.</p>
+                    <div class="method-details">
+                        <p><strong>Parameters:</strong></p>
+                        <ul>
+                            <li><code>include_soundgroups</code> (bool): Whether to also resume all registered sound groups</li>
+                        </ul>
+                    </div>
+                    <div class="code-example">
+                        <pre><code># Pause everything including sound groups (default)
+manager.pause_all()
+
+# Resume everything including sound groups (default)
+manager.resume_all()
+
+# Control only manager sounds, not sound groups
+manager.pause_all(include_soundgroups=False)
+manager.resume_all(include_soundgroups=False)</code></pre>
                     </div>
                 </div>
             </section>
@@ -312,6 +401,29 @@ manager.update(player.x, player.y, player.z)</code></pre>
                         <p><strong>Available presets:</strong> radio, telephone, muffled, thin, underwater, clear</p>
                     </div>
                 </div>
+
+                <div class="method">
+                    <h3>get_memory_stats()</h3>
+                    <p>Get detailed memory usage statistics for audio management.</p>
+                    <div class="method-details">
+                        <p><strong>Returns:</strong> Dictionary with memory usage information</p>
+                        <p><strong>Includes:</strong></p>
+                        <ul>
+                            <li><code>regular_sounds</code> - Number of regular sounds loaded</li>
+                            <li><code>active_regular</code> - Number of actively playing regular sounds</li>
+                            <li><code>oneshot_stats</code> - Sound pool statistics</li>
+                            <li><code>total_sounds</code> - Total number of sounds in memory</li>
+                            <li><code>registered_sound_groups</code> - Number of registered sound groups</li>
+                        </ul>
+                    </div>
+                    <div class="code-example">
+                        <pre><code># Check memory usage
+stats = manager.get_memory_stats()
+print(f"Regular sounds: {stats['regular_sounds']}")
+print(f"Sound groups: {stats['registered_sound_groups']}")
+print(f"Total active: {stats['total_sounds']}")</code></pre>
+                    </div>
+                </div>
             </section>
 
             <section class="section">
@@ -330,6 +442,11 @@ manager.update(player.x, player.y, player.z)</code></pre>
                 <div class="property">
                     <h3>sound_pool</h3>
                     <p>SoundPool instance for oneshot sound management.</p>
+                </div>
+
+                <div class="property">
+                    <h3>sound_groups</h3>
+                    <p>Set of registered SoundGroup instances for automatic cleanup management.</p>
                 </div>
             </section>
 
@@ -370,6 +487,7 @@ manager.update(player.x, player.y, player.z)</code></pre>
                 <h2>Complete Example</h2>
                 <div class="code-example">
                     <pre><code>from al_manager import Manager
+from al_manager.sound_group import SoundGroup
 import time
 
 # Initialize manager
@@ -381,6 +499,15 @@ manager.create_global_filter("underwater", "lowpass", gain=0.8, gainhf=0.3)
 
 # Play background music
 music = manager.play("background.ogg", volume=0.6, looping=True)
+
+# Create sound groups (automatically registered for cleanup)
+player_sounds = SoundGroup(manager, "player")
+player_sounds.add_sound("footstep", "footstep.ogg")
+player_sounds.add_sound("jump", "jump.ogg")
+
+ambient_sounds = SoundGroup(manager, "ambient")
+ambient_sounds.add_sound("water", "water.ogg", looping=True, positioned=True)
+ambient_sounds.set_position(10, 0, 5)
 
 # Play positioned ambient sounds
 water = manager.play_p("water.ogg", x=10, y=0, z=5, looping=True)
@@ -395,13 +522,19 @@ for i in range(100):
     # Update listener position
     manager.update(i * 0.1, 0, 0)
     
-    # Play occasional oneshots
+    # Play sounds through sound groups
     if i % 20 == 0:
-        manager.play_oneshot("footstep.ogg", volume=0.4)
+        player_sounds.play_sound("footstep")
     
-    # Clean up finished sounds
-    manager.clean()
+    # No manual cleanup needed! Manager automatically cleans every 10 sound plays
+    # Uncomment below if immediate cleanup needed for performance:
+    # manager.cleanup_finished_sounds()
     time.sleep(0.1)
+
+# Check memory usage
+stats = manager.get_memory_stats()
+print(f"Active sounds: {stats['total_sounds']}")
+print(f"Registered sound groups: {stats['registered_sound_groups']}")
 
 # Cleanup
 manager.destroy_all()</code></pre>
