@@ -8,7 +8,7 @@ from .manager import *
 from .effects import AudioEffect, AudioFilter, EffectPresets
 from .efx_manager import EfxManager
 from .sound_group import SoundGroup, create_player_sound_group, create_enemy_sound_group, create_npc_sound_group
-from .sound import StreamingSound
+from .sound import Sound, StreamingSound, URLSound  # StreamingSound and URLSound are legacy aliases
 
 __version__ = "2.0.0"
 __author__ = "Enhanced by Claude"

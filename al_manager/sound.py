@@ -54,9 +54,46 @@ class Sound:
         self.applied_effects = []
         self.applied_filters = []
         self.direct_filter = None
+        
+        # Sound type and streaming support
+        self._sound_type = 'file'  # 'file', 'url', 'stream'
+        self._is_streaming = False
+        self._stream_thread = None
+        self._should_loop = False
+        self._is_paused = False
+        
+        # Streaming-specific attributes
+        self.buffers = []
+        self.buffer_queue = queue.Queue()
+        self.buffer_size = 4096 * 4
+        self.buffer_count = 4
+        self.sample_rate = 44100
+        self.format = cyal.BufferFormat.STEREO16
+        self.channels = 2
+        self.audio_file = None
+        self.filename = None
+        
+        # URL streaming attributes
+        self.stream = None
+        self.process = None
 
-    # Loads a file, utilizing the data function above. Add the option to loop if the user wishes.
-    def load(self, filename):
+    # Loads a file, URL, or sets up streaming. Determines type automatically.
+    def load(self, source, streaming=False, spatial_audio=None, chunk_size=None, preload_buffers=None):
+        # Determine sound type
+        if source.startswith(('http://', 'https://')):
+            if streaming:
+                return self._setup_url_streaming(source, spatial_audio, chunk_size, preload_buffers)
+            else:
+                return self._load_url(source, spatial_audio)
+        elif streaming:
+            return self._setup_file_streaming(source, chunk_size, preload_buffers)
+        else:
+            return self._load_file(source)
+    
+    def _load_file(self, filename):
+        """Load a regular audio file."""
+        self._sound_type = 'file'
+        self.filename = filename
         path = os.path.realpath(filename)
         # First check if there is a pre-existing buffer that can be used.
         if path in buffers:
@@ -97,76 +134,396 @@ class Sound:
         self.source.buffer = self.buffer
         # Spatialization
         self.source.spatialize = True
-
-    def play(self):
-        # Check if the source is active.
+        return True
+    
+    def _load_url(self, url, spatial_audio=None):
+        """Load audio from URL."""
+        self._sound_type = 'url'
+        self.filename = url
+        # First generate a buffer.
+        self.buffer = self.ctx.gen_buffer()
+        # Make a source.
+        self.source = self.ctx.gen_source()
+        
+        # Configure spatial audio based on parameter
+        if spatial_audio is None:
+            spatial_audio = False  # Default to direct mode for URLs
+        
+        if spatial_audio:
+            # Enable 3D positioning
+            self.source.spatialize = True
+            self.source.relative = False
+            self.source.direct_channels = False
+            self.source.position = [0.0, 0.0, 0.0]
+            self.is_direct = False
+        else:
+            # Direct mode (default) - prevents static and positioning issues
+            self.source.spatialize = False
+            self.source.relative = True
+            self.source.direct_channels = True
+            self.source.position = [0.0, 0.0, 0.0]
+            self.is_direct = True
+            
+        self.stream = requests.get(url, stream=True)
+        return self._process_url_data()
+    
+    def _process_url_data(self):
+        """Process URL stream data and load into buffer."""
         if not self.is_active:
             return False
-        # Check if the source is playing.
-        if self.is_playing:
+        
+        try:
+            # Load audio directly from stream
+            audio = AudioSegment.from_file(io.BytesIO(self.stream.content))
+        except Exception as e:
+            print(f"Error loading audio: {e}")
             return False
-        # Is it a looped source? If yes, make it stop looping.
-        if self.looping:
-            self.looping = False
-        self.source.play()
+        
+        try:
+            # Get actual audio properties
+            channels = audio.channels
+            actual_sample_rate = audio.frame_rate
+            
+            # Normalize audio to prevent corruption and static
+            # Convert to 16-bit PCM and ensure proper sample rate
+            audio = audio.set_frame_rate(44100)  # Standardize sample rate
+            audio = audio.set_sample_width(2)   # 16-bit samples
+            
+            # Apply gentle normalization to prevent clipping/static
+            if audio.max_possible_amplitude > 0:
+                normalized_audio = audio.normalize(headroom=0.1)  # Leave 10% headroom
+            else:
+                normalized_audio = audio
+            
+            pcm_data = normalized_audio.raw_data
+            channels = normalized_audio.channels
+            actual_sample_rate = normalized_audio.frame_rate
+            
+            # Set format based on actual channels
+            if channels == 1:
+                audio_format = cyal.BufferFormat.MONO16
+            else:
+                audio_format = cyal.BufferFormat.STEREO16
+            
+            print(f"  Audio info: {channels} channels, {actual_sample_rate}Hz, {len(pcm_data)} bytes")
+            
+            # Use standardized sample rate and normalized data
+            self.buffer.set_data(
+                pcm_data, format=audio_format, sample_rate=actual_sample_rate
+            )
+            
+            # Update instance variables to reflect actual audio properties
+            self.format = audio_format
+            self.sample_rate = actual_sample_rate
+            
+        except Exception as e:
+            print(f"Buffer Setting Error: {e}")
+            return False
+        
+        try:
+            # Use queue_buffers method but ensure proper format
+            self.source.queue_buffers(self.buffer)
+        except Exception as e:
+            print(f"Buffer Queuing Error: {e}")
+            return False
+            
         return True
+    
+    def _setup_file_streaming(self, filename, chunk_size=None, preload_buffers=None):
+        """Setup streaming for file playback."""
+        self._sound_type = 'stream'
+        self.filename = filename
+        
+        if chunk_size:
+            self.buffer_size = chunk_size
+        if preload_buffers:
+            self.buffer_count = preload_buffers
+        
+        try:
+            # Load audio file with pydub for format support
+            self.audio_file = AudioSegment.from_file(filename)
+            
+            # Apply the same normalization fixes as URLSound
+            # Normalize audio to prevent corruption and static
+            self.audio_file = self.audio_file.set_frame_rate(44100)  # Standardize sample rate
+            self.audio_file = self.audio_file.set_sample_width(2)   # 16-bit samples
+            
+            # Apply gentle normalization to prevent clipping/static
+            if self.audio_file.max_possible_amplitude > 0:
+                self.audio_file = self.audio_file.normalize(headroom=0.1)  # Leave 10% headroom
+            
+            # Get normalized audio properties
+            self.sample_rate = self.audio_file.frame_rate
+            self.channels = self.audio_file.channels
+            
+            # Set OpenAL format based on channels
+            if self.channels == 1:
+                self.format = cyal.BufferFormat.MONO16
+            else:
+                self.format = cyal.BufferFormat.STEREO16
+            
+            # Create OpenAL source
+            self.source = self.ctx.gen_source()
+            self.source.spatialize = not self.is_direct
+            
+            # Create streaming buffers
+            self.buffers = self.ctx.gen_buffers(self.buffer_count)
+            
+            print(f"Streaming setup: {filename}")
+            print(f"  Sample rate: {self.sample_rate} Hz")
+            print(f"  Channels: {self.channels}")
+            print(f"  Duration: {len(self.audio_file) / 1000:.1f} seconds")
+            print(f"  Buffer size: {self.buffer_size} bytes")
+            print(f"  Buffer count: {self.buffer_count}")
+            
+            return True
+            
+        except Exception as e:
+            print(f"Error loading streaming audio '{filename}': {e}")
+            return False
+    
+    def _setup_url_streaming(self, url, spatial_audio=None, chunk_size=None, preload_buffers=None):
+        """Setup streaming for URL playback."""
+        # This would be implemented for URL streaming support
+        # For now, fall back to regular URL loading
+        return self._load_url(url, spatial_audio)
+
+    def play(self, loop=False):
+        """Play the sound. For streaming sounds, use the loop parameter."""
+        if self._sound_type == 'stream':
+            return self._play_stream(loop)
+        else:
+            # Check if the source is active.
+            if not self.is_active:
+                return False
+            # Check if the source is playing.
+            if self.is_playing:
+                return False
+            # Is it a looped source? If yes, make it stop looping.
+            if self.looping:
+                self.looping = False
+            self.source.play()
+            return True
 
     # Play the source and make it loop, if it is active (see properties below).
     def play_looped(self):
-        # Check if the source is active.
-        if not self.is_active:
+        """Play the sound in loop mode."""
+        if self._sound_type == 'stream':
+            return self._play_stream(loop=True)
+        else:
+            # Check if the source is active.
+            if not self.is_active:
+                return False
+            # Check if the source is playing.
+            if self.is_playing:
+                return False
+            # Is it a looped source? If not, make it loop.
+            if not self.looping:
+                self.looping = True
+            self.source.play()
+            return True
+    
+    def _play_stream(self, loop=False):
+        """Start streaming playback."""
+        if not self.source or not self.audio_file:
+            print("No audio loaded for streaming")
             return False
-        # Check if the source is playing.
-        if self.is_playing:
+        
+        if self._is_streaming:
+            print("Already streaming")
             return False
-        # Is it a looped source? If not, make it loop.
-        if not self.looping:
-            self.looping = True
-        self.source.play()
-        return True
+        
+        self._should_loop = loop
+        self._is_streaming = True
+        self._is_paused = False
+        
+        try:
+            # Preload initial buffers
+            audio_data = self.audio_file.raw_data
+            position = 0
+            
+            for buffer in self.buffers:
+                if position < len(audio_data):
+                    chunk_end = min(position + self.buffer_size, len(audio_data))
+                    chunk_data = audio_data[position:chunk_end]
+                    
+                    if chunk_data:
+                        buffer.set_data(chunk_data, sample_rate=self.sample_rate, format=self.format)
+                        self.source.queue_buffers(buffer)
+                        position = chunk_end
+            
+            # Start playback
+            self.source.play()
+            
+            # Start streaming thread
+            self._stream_thread = threading.Thread(target=self._stream_audio_data, daemon=True)
+            self._stream_thread.start()
+            
+            print(f"Started streaming: {self.filename}")
+            return True
+            
+        except Exception as e:
+            print(f"Error starting stream: {e}")
+            self._is_streaming = False
+            return False
+    
+    def _stream_audio_data(self):
+        """Stream audio data in a separate thread."""
+        try:
+            audio_data = self.audio_file.raw_data
+            data_length = len(audio_data)
+            position = 0
+            
+            while self._is_streaming:
+                # Check if we need to queue more buffers
+                queued = self.source.buffers_queued
+                processed = self.source.buffers_processed
+                
+                # Unqueue processed buffers
+                if processed > 0:
+                    try:
+                        processed_buffers = self.source.unqueue_buffers()
+                    except:
+                        # Fallback if API doesn't work as expected
+                        processed_buffers = []
+                    
+                    # Refill processed buffers if there's more data
+                    for buffer in processed_buffers:
+                        if position < data_length:
+                            # Get next chunk of audio data
+                            chunk_end = min(position + self.buffer_size, data_length)
+                            chunk_data = audio_data[position:chunk_end]
+                            
+                            if chunk_data:
+                                # Set buffer data
+                                buffer.set_data(chunk_data, sample_rate=self.sample_rate, format=self.format)
+                                # Queue the buffer
+                                self.source.queue_buffers(buffer)
+                                position = chunk_end
+                        
+                        elif self._should_loop:
+                            # Loop back to the beginning
+                            position = 0
+                
+                # Check if source stopped playing and needs to be restarted
+                if self.source.state != cyal.SourceState.PLAYING and not self._is_paused:
+                    if queued > 0:  # Only restart if we have buffers queued
+                        self.source.play()
+                
+                # Small delay to prevent excessive CPU usage
+                threading.Event().wait(0.01)
+                
+        except Exception as e:
+            print(f"Streaming error: {e}")
+        finally:
+            self._is_streaming = False
 
     # Pause the source without restarting the sound completely.
     def pause(self):
-        # Check if the source is active.
-        if not self.is_active:
-            return False
-        # Check if the source is already paused.
-        if self.paused:
-            return False
-        self.source.pause()
-        return True
+        """Pause the sound."""
+        if self._sound_type == 'stream':
+            return self._pause_stream()
+        else:
+            # Check if the source is active.
+            if not self.is_active:
+                return False
+            # Check if the source is already paused.
+            if self.paused:
+                return False
+            self.source.pause()
+            return True
+    
+    def _pause_stream(self):
+        """Pause streaming playback."""
+        if self.source and self._is_streaming:
+            self.source.pause()
+            self._is_paused = True
+            print("Streaming paused")
+            return True
+        return False
+    
+    def resume(self):
+        """Resume streaming playback (streaming sounds only)."""
+        if self._sound_type == 'stream' and self.source and self._is_streaming and self._is_paused:
+            self.source.play()
+            self._is_paused = False
+            print("Streaming resumed")
+            return True
+        return False
 
     # Stop the source if it is active (see properties below).
     def stop(self):
-        # Check if the source is active.
-        if not self.is_active:
-            return False
-        # Check if the source is already stopped.
-        if not self.is_playing:
-            return False
-        self.source.stop()
-        return True
+        """Stop the sound."""
+        if self._sound_type == 'stream':
+            return self._stop_stream()
+        else:
+            # Check if the source is active.
+            if not self.is_active:
+                return False
+            # Check if the source is already stopped.
+            if not self.is_playing:
+                return False
+            self.source.stop()
+            return True
+    
+    def _stop_stream(self):
+        """Stop streaming playback."""
+        if self._is_streaming:
+            self._is_streaming = False
+            self._is_paused = False
+            
+            if self.source:
+                self.source.stop()
+                
+                # Unqueue all buffers
+                try:
+                    queued = self.source.buffers_queued
+                    if queued > 0:
+                        self.source.unqueue_buffers()
+                except:
+                    pass
+            
+            # Wait for streaming thread to finish
+            if self._stream_thread and self._stream_thread.is_alive():
+                self._stream_thread.join(timeout=1.0)
+            
+            print("Streaming stopped")
+            return True
+        return False
 
     # Properties
     # These are pretty much self explanatory so I won't go into any detail here.
     @property
     def is_active(self):
-        if self.source and self.buffer:
-            return True
+        if self._sound_type == 'stream':
+            return self.source is not None and self.buffers
+        elif self._sound_type == 'url':
+            return self.source is not None
         else:
-            return False
+            if self.source and self.buffer:
+                return True
+            else:
+                return False
 
     @property
     def is_playing(self):
-        if not self.is_active:
+        if self._sound_type == 'stream':
+            if self.source:
+                return self.source.state == cyal.SourceState.PLAYING and self._is_streaming
             return False
-        return bool(self.source.state == cyal.SourceState.PLAYING)
+        else:
+            if not self.is_active:
+                return False
+            return bool(self.source.state == cyal.SourceState.PLAYING)
 
     @property
     def paused(self):
-        if not self.is_active:
-            return False
-        return bool(self.source.state == cyal.SourceState.PAUSED)
+        if self._sound_type == 'stream':
+            return self._is_paused
+        else:
+            if not self.is_active:
+                return False
+            return bool(self.source.state == cyal.SourceState.PAUSED)
 
     @property
     def looping(self):
@@ -407,522 +764,15 @@ class Sound:
     def get_filter_count(self) -> int:
         """Get the number of applied filters."""
         return len(self.applied_filters)
-        
-    # Destroy the sound.
-    def close(self):
-        # Clean up effects and filters first
-        try:
-            self.remove_all_effects()
-            self.remove_all_filters()
-        except:
-            pass
-        
-        # Stop the source before cleanup
-        try:
-            if self.source and hasattr(self.source, 'stop'):
-                self.source.stop()
-        except:
-            pass
-        
-        # Clean up OpenAL objects
-        try:
-            if hasattr(self, 'source') and self.source:
-                self.source = None
-        except:
-            pass
-        
-        try:
-            if hasattr(self, 'buffer') and self.buffer:
-                # Don't delete shared buffers, just remove reference
-                self.buffer = None
-        except:
-            pass
-
-
-class URLSound:
-    # Initialization. Context is passed to this class.
-    def __init__(self, ctx=cyal.Context(cyal.Device(), make_current=True, hrtf_soft=1)):
-        # The context passed to the Sound class for a sound to be played.
-        self.ctx = ctx
-        # The source and buffer, used later.
-        self.source = None
-        self.buffer = None
-        self.buffer_size = 4096
-        self.sample_rate = 44100
-        self.format = cyal.BufferFormat.STEREO16
-        #The stream, using requests to retrieve in chunks.
-        self.stream = None
-        # Controls whether a source is direct (does not move), or is able to be positioned, or not. The value will be changed accordingly with a property.
-        self.is_direct = False
-        # Controls the position of the source.
-        self.source_position = [0.0, 0.0, 0.0]
-        # Ffmpeg process.
-        self.process = None
-
-    def load(self, path, spatial_audio=False):
-        # First generate a buffer.
-        self.buffer = self.ctx.gen_buffer()
-        # Make a source.
-        self.source = self.ctx.gen_source()
-        
-        # Configure spatial audio based on parameter
-        if spatial_audio:
-            # Enable 3D positioning
-            self.source.spatialize = True
-            self.source.relative = False
-            self.source.direct_channels = False
-            self.source.position = [0.0, 0.0, 0.0]
-            self.is_direct = False
-        else:
-            # Direct mode (default) - prevents static and positioning issues
-            self.source.spatialize = False
-            self.source.relative = True
-            self.source.direct_channels = True
-            self.source.position = [0.0, 0.0, 0.0]
-            self.is_direct = True
-            
-        self.stream = requests.get(path, stream = True)
-
-    def read(self):
-        if not self.is_active:
-            return
-        
-        try:
-            # Load audio directly from stream
-            audio = AudioSegment.from_file(io.BytesIO(self.stream.content))
-        except Exception as e:
-            print(f"Error loading audio: {e}")
-            return
-        
-        try:
-            # Get actual audio properties
-            channels = audio.channels
-            actual_sample_rate = audio.frame_rate
-            
-            # Normalize audio to prevent corruption and static
-            # Convert to 16-bit PCM and ensure proper sample rate
-            audio = audio.set_frame_rate(44100)  # Standardize sample rate
-            audio = audio.set_sample_width(2)   # 16-bit samples
-            
-            # Apply gentle normalization to prevent clipping/static
-            if audio.max_possible_amplitude > 0:
-                normalized_audio = audio.normalize(headroom=0.1)  # Leave 10% headroom
-            else:
-                normalized_audio = audio
-            
-            pcm_data = normalized_audio.raw_data
-            channels = normalized_audio.channels
-            actual_sample_rate = normalized_audio.frame_rate
-            
-            # Set format based on actual channels
-            if channels == 1:
-                audio_format = cyal.BufferFormat.MONO16
-            else:
-                audio_format = cyal.BufferFormat.STEREO16
-            
-            print(f"  Audio info: {channels} channels, {actual_sample_rate}Hz, {len(pcm_data)} bytes")
-            
-            # Use standardized sample rate and normalized data
-            self.buffer.set_data(
-                pcm_data, format=audio_format, sample_rate=actual_sample_rate
-            )
-            
-            # Update instance variables to reflect actual audio properties
-            self.format = audio_format
-            self.sample_rate = actual_sample_rate
-            
-        except Exception as e:
-            print(f"Buffer Setting Error: {e}")
-            return
-        
-        try:
-            # Use queue_buffers method but ensure proper format
-            self.source.queue_buffers(self.buffer)
-        except Exception as e:
-            print(f"Buffer Queuing Error: {e}")
-
-    def play(self):
-        # Check if the source is active.
-        if not self.is_active:
-            return False
-        # Is it a looped source? If yes, make it stop looping.
-        if self.looping:
-            self.looping = False
-        self.source.play()
-        return True
-
-    # Play the source and make it loop, if it is active (see properties below).
-    def play_looped(self):
-        # Check if the source is active.
-        if not self.is_active:
-            return False
-        # Is it a looped source? If not, make it loop.
-        if not self.looping:
-            self.looping = True
-        self.source.play()
-        return True
-
-    # Pause the source without restarting the sound completely.
-    def pause(self):
-        # Check if the source is active.
-        if not self.is_active:
-            return False
-        # Check if the source is already paused.
-        if self.paused:
-            return False
-        self.source.pause()
-        return True
-
-    # Stop the source if it is active (see properties below).
-    def stop(self):
-        # Check if the source is active.
-        if not self.is_active:
-            return False
-        # Check if the source is already stopped.
-        if not self.is_playing:
-            return False
-        self.source.stop()
-        return True
-
-    # Properties
-    # These are pretty much self explanatory so I won't go into any detail here.
-    @property
-    def is_active(self):
-        if self.source:
-            return True
-        else:
-            return False
-
-    @property
-    def is_playing(self):
-        if not self.is_active:
-            return False
-        return bool(self.source.state == cyal.SourceState.PLAYING)
-
-    @property
-    def paused(self):
-        if not self.is_active:
-            return False
-        return bool(self.source.state == cyal.SourceState.PAUSED)
-
-    @property
-    def looping(self):
-        if not self.is_active:
-            return False
-        return bool(self.source.looping)
-
-    @looping.setter
-    def looping(self, value):
-        if self.is_active:
-            self.source.looping = value
-
-    @property
-    def direct(self):
-        return self.is_direct
-
-    @direct.setter
-    def direct(self, value):
-        if value != self.is_direct:
-            if value:
-                self.source.relative = True
-                self.source.direct_channels = True
-                self.position = [0.0, 0.0, 0.0]
-                self.is_direct = True
-            else:
-                self.source.relative = False
-                self.source.direct_channels = False
-                self.is_direct = False
-
-    @property
-    def position(self):
-        return self.source_position
-
-    @position.setter
-    def position(self, value):
-        if self.is_direct:
-            raise ValueError("Direct sources cannot be positioned.")
-        self.source_position = value
-        self.source.position = value  # convert_to_openal_coordinates(*value)
-
-    @property
-    def volume(self):
-        if not self.is_active:
-            return 0.0
-        return self.source.gain
-
-    @volume.setter
-    def volume(self, value):
-        if self.is_active:
-            self.source.gain = value
-
-    @property
-    def pitch(self):
-        if not self.is_active:
-            return 0.0
-        return self.source.pitch
-
-    @pitch.setter
-    def pitch(self, value):
-        if self.is_active:
-            self.source.pitch = value
-
-    # Destroy the sound.
-    def close(self):
-        try:
-            if hasattr(self, 'source') and self.source:
-                self.source.stop()
-                self.source = None
-        except:
-            pass
-        try:
-            if hasattr(self, 'buffer') and self.buffer:
-                self.buffer = None
-        except:
-            pass
-        try:
-            if hasattr(self, 'stream') and self.stream:
-                self.stream.close()
-                self.stream = None
-        except:
-            pass
-
-
-class StreamingSound:
-    """
-    Streaming sound class for large audio files (e.g., music).
-    Loads and plays audio in chunks to avoid memory issues and provide instant playback.
-    """
     
-    def __init__(self, ctx=cyal.Context(cyal.Device(), make_current=True, hrtf_soft=1)):
-        self.ctx = ctx
-        self.source = None
-        self.buffers = []
-        self.buffer_queue = queue.Queue()
-        self.is_streaming = False
-        self.stream_thread = None
-        self.filename = None
-        
-        # Streaming settings
-        self.buffer_size = 4096 * 4  # Size of each audio chunk
-        self.buffer_count = 4  # Number of buffers to queue
-        self.sample_rate = 44100
-        self.channels = 2
-        
-        # Audio format
-        self.format = cyal.BufferFormat.STEREO16
-        
-        # Position and audio properties
-        self.is_direct = True  # Streaming sounds are typically direct (music/ambient)
-        self.source_position = [0.0, 0.0, 0.0]
-        
-        # Audio effects support
-        self.applied_effects = []
-        self.applied_filters = []
-        self.direct_filter = None
-        
-        # State
-        self.is_paused = False
-        self.should_loop = False
-        self.audio_file = None
-    
-    def load_stream(self, filename: str, chunk_size: int = None, preload_buffers: int = None):
-        """
-        Load an audio file for streaming.
-        
-        Args:
-            filename: Path to the audio file
-            chunk_size: Size of each audio chunk in bytes
-            preload_buffers: Number of buffers to preload
-        """
-        self.filename = filename
-        
-        if chunk_size:
-            self.buffer_size = chunk_size
-        if preload_buffers:
-            self.buffer_count = preload_buffers
-        
-        try:
-            # Load audio file with pydub for format support
-            self.audio_file = AudioSegment.from_file(filename)
-            
-            # Apply the same normalization fixes as URLSound
-            # Normalize audio to prevent corruption and static
-            self.audio_file = self.audio_file.set_frame_rate(44100)  # Standardize sample rate
-            self.audio_file = self.audio_file.set_sample_width(2)   # 16-bit samples
-            
-            # Apply gentle normalization to prevent clipping/static
-            if self.audio_file.max_possible_amplitude > 0:
-                self.audio_file = self.audio_file.normalize(headroom=0.1)  # Leave 10% headroom
-            
-            # Get normalized audio properties
-            self.sample_rate = self.audio_file.frame_rate
-            self.channels = self.audio_file.channels
-            
-            # Set OpenAL format based on channels
-            if self.channels == 1:
-                self.format = cyal.BufferFormat.MONO16
-            else:
-                self.format = cyal.BufferFormat.STEREO16
-            
-            # Create OpenAL source
-            self.source = self.ctx.gen_source()
-            self.source.spatialize = not self.is_direct
-            
-            # Create streaming buffers
-            self.buffers = self.ctx.gen_buffers(self.buffer_count)
-            
-            print(f"Streaming setup: {filename}")
-            print(f"  Sample rate: {self.sample_rate} Hz")
-            print(f"  Channels: {self.channels}")
-            print(f"  Duration: {len(self.audio_file) / 1000:.1f} seconds")
-            print(f"  Buffer size: {self.buffer_size} bytes")
-            print(f"  Buffer count: {self.buffer_count}")
-            
-            return True
-            
-        except Exception as e:
-            print(f"Error loading streaming audio '{filename}': {e}")
-            return False
-    
-    def _stream_audio_data(self):
-        """Stream audio data in a separate thread."""
-        try:
-            audio_data = self.audio_file.raw_data
-            data_length = len(audio_data)
-            position = 0
-            
-            while self.is_streaming:
-                # Check if we need to queue more buffers
-                queued = self.source.buffers_queued
-                processed = self.source.buffers_processed
-                
-                # Unqueue processed buffers
-                if processed > 0:
-                    try:
-                        processed_buffers = self.source.unqueue_buffers()
-                    except:
-                        # Fallback if API doesn't work as expected
-                        processed_buffers = []
-                    
-                    # Refill processed buffers if there's more data
-                    for buffer in processed_buffers:
-                        if position < data_length:
-                            # Get next chunk of audio data
-                            chunk_end = min(position + self.buffer_size, data_length)
-                            chunk_data = audio_data[position:chunk_end]
-                            
-                            if chunk_data:
-                                # Set buffer data
-                                buffer.set_data(chunk_data, sample_rate=self.sample_rate, format=self.format)
-                                # Queue the buffer
-                                self.source.queue_buffers(buffer)
-                                position = chunk_end
-                        
-                        elif self.should_loop:
-                            # Loop back to the beginning
-                            position = 0
-                
-                # Check if source stopped playing and needs to be restarted
-                if self.source.state != cyal.SourceState.PLAYING and not self.is_paused:
-                    if queued > 0:  # Only restart if we have buffers queued
-                        self.source.play()
-                
-                # Small delay to prevent excessive CPU usage
-                threading.Event().wait(0.01)
-                
-        except Exception as e:
-            print(f"Streaming error: {e}")
-        finally:
-            self.is_streaming = False
-    
-    def play(self, loop: bool = False):
-        """Start streaming playback."""
-        if not self.source or not self.audio_file:
-            print("No audio loaded for streaming")
-            return False
-        
-        if self.is_streaming:
-            print("Already streaming")
-            return False
-        
-        self.should_loop = loop
-        self.is_streaming = True
-        self.is_paused = False
-        
-        try:
-            # Preload initial buffers
-            audio_data = self.audio_file.raw_data
-            position = 0
-            
-            for buffer in self.buffers:
-                if position < len(audio_data):
-                    chunk_end = min(position + self.buffer_size, len(audio_data))
-                    chunk_data = audio_data[position:chunk_end]
-                    
-                    if chunk_data:
-                        buffer.set_data(chunk_data, sample_rate=self.sample_rate, format=self.format)
-                        self.source.queue_buffers(buffer)
-                        position = chunk_end
-            
-            # Start playback
-            self.source.play()
-            
-            # Start streaming thread
-            self.stream_thread = threading.Thread(target=self._stream_audio_data, daemon=True)
-            self.stream_thread.start()
-            
-            print(f"Started streaming: {self.filename}")
-            return True
-            
-        except Exception as e:
-            print(f"Error starting stream: {e}")
-            self.is_streaming = False
-            return False
-    
-    def pause(self):
-        """Pause streaming playback."""
-        if self.source and self.is_streaming:
-            self.source.pause()
-            self.is_paused = True
-            print("Streaming paused")
-    
-    def resume(self):
-        """Resume streaming playback."""
-        if self.source and self.is_streaming and self.is_paused:
-            self.source.play()
-            self.is_paused = False
-            print("Streaming resumed")
-    
-    def stop(self):
-        """Stop streaming playback."""
-        if self.is_streaming:
-            self.is_streaming = False
-            self.is_paused = False
-            
-            if self.source:
-                self.source.stop()
-                
-                # Unqueue all buffers
-                try:
-                    queued = self.source.buffers_queued
-                    if queued > 0:
-                        self.source.unqueue_buffers()
-                except:
-                    pass
-            
-            # Wait for streaming thread to finish
-            if self.stream_thread and self.stream_thread.is_alive():
-                self.stream_thread.join(timeout=1.0)
-            
-            print("Streaming stopped")
-    
+    # Streaming-specific methods
     def set_volume(self, volume: float):
-        """Set the volume of the streaming audio."""
+        """Set the volume (unified method for all sound types)."""
         if self.source:
             self.source.gain = max(0.0, min(1.0, volume))
     
     def set_pitch(self, pitch: float):
-        """Set the pitch of the streaming audio."""
+        """Set the pitch (unified method for all sound types)."""
         if self.source:
             self.source.pitch = max(0.5, min(2.0, pitch))
     
@@ -941,30 +791,9 @@ class StreamingSound:
             if direct:
                 self.source.position = [0.0, 0.0, 0.0]
     
-    @property
-    def is_playing(self):
-        """Check if the stream is currently playing."""
-        if self.source:
-            return self.source.state == cyal.SourceState.PLAYING and self.is_streaming
-        return False
-    
-    @property
-    def volume(self):
-        """Get current volume."""
-        if self.source:
-            return self.source.gain
-        return 0.0
-    
-    @property
-    def pitch(self):
-        """Get current pitch."""
-        if self.source:
-            return self.source.pitch
-        return 1.0
-    
     def get_playback_position(self):
-        """Get approximate playback position in seconds."""
-        if self.source and self.audio_file:
+        """Get approximate playback position in seconds (streaming only)."""
+        if self._sound_type == 'stream' and self.source and self.audio_file:
             # This is an approximation based on processed buffers
             processed = self.source.buffers_processed
             bytes_per_second = self.sample_rate * self.channels * 2  # 16-bit = 2 bytes
@@ -973,58 +802,92 @@ class StreamingSound:
         return 0.0
     
     def get_duration(self):
-        """Get total duration in seconds."""
-        if self.audio_file:
+        """Get total duration in seconds (streaming only)."""
+        if self._sound_type == 'stream' and self.audio_file:
             return len(self.audio_file) / 1000.0
         return 0.0
-    
-    def add_effect(self, effect_type: str, send_slot: int = 0, **kwargs):
-        """Add an audio effect to the streaming sound."""
-        if not self.source:
-            raise RuntimeError("Cannot add effects to inactive stream")
         
-        # Get EFX extension using centralized manager
-        try:
-            efx = EfxManager.get_efx(self.ctx)
-        except Exception as e:
-            raise RuntimeError(f"EFX extension not available: {e}")
-        
-        effect = AudioEffect(efx)
-        
-        # Apply the requested effect type
-        if effect_type == 'reverb':
-            preset = kwargs.get('preset', 'room')
-            effect.reverb(preset)
-        elif effect_type == 'equalizer':
-            effect.equalizer(**kwargs)
-        else:
-            raise ValueError(f"Effect type '{effect_type}' not supported for streaming audio")
-        
-        # Send the source to the effect slot
-        if effect.slot:
-            efx.send(self.source, send_slot, effect.slot)
-        
-        self.applied_effects.append(effect)
-        return effect
-    
+    # Destroy the sound.
     def close(self):
-        """Clean up the streaming sound."""
-        self.stop()
+        # Stop streaming if active
+        if self._sound_type == 'stream' and self._is_streaming:
+            self._stop_stream()
         
-        # Clean up effects and filters
-        for effect in self.applied_effects:
+        # Clean up effects and filters first
+        try:
+            self.remove_all_effects()
+            self.remove_all_filters()
+        except:
+            pass
+        
+        # Stop the source before cleanup
+        try:
+            if self.source and hasattr(self.source, 'stop'):
+                self.source.stop()
+        except:
+            pass
+        
+        # Clean up streaming-specific objects
+        if self._sound_type == 'stream':
             try:
-                del effect
+                if self.buffers:
+                    for buffer in self.buffers:
+                        del buffer
+                self.buffers = []
+                self.audio_file = None
             except:
                 pass
-        self.applied_effects.clear()
+        
+        # Clean up URL-specific objects
+        if self._sound_type == 'url':
+            try:
+                if self.stream:
+                    self.stream.close()
+                    self.stream = None
+                if self.process:
+                    self.process = None
+            except:
+                pass
         
         # Clean up OpenAL objects
-        if self.source:
-            del self.source
-        if self.buffers:
-            for buffer in self.buffers:
-                del buffer
+        try:
+            if hasattr(self, 'source') and self.source:
+                self.source = None
+        except:
+            pass
         
-        self.audio_file = None
-        print(f"Streaming sound closed: {self.filename}")
+        try:
+            if hasattr(self, 'buffer') and self.buffer:
+                # Don't delete shared buffers, just remove reference
+                self.buffer = None
+        except:
+            pass
+        
+        print(f"Sound closed: {self.filename}")
+
+
+# Legacy class aliases for backward compatibility
+class URLSound(Sound):
+    """Legacy URLSound class - use Sound(url, streaming=False) instead."""
+    def __init__(self, ctx=cyal.Context(cyal.Device(), make_current=True, hrtf_soft=1)):
+        super().__init__(ctx)
+        print("Warning: URLSound is deprecated. Use Sound class with URL parameter instead.")
+    
+    def load(self, path, spatial_audio=False):
+        return super().load(path, streaming=False, spatial_audio=spatial_audio)
+    
+    def read(self):
+        # For backward compatibility - this was specific to URLSound
+        if self._sound_type == 'url':
+            return self._process_url_data()
+        return False
+
+
+class StreamingSound(Sound):
+    """Legacy StreamingSound class - use Sound(file, streaming=True) instead."""
+    def __init__(self, ctx=cyal.Context(cyal.Device(), make_current=True, hrtf_soft=1)):
+        super().__init__(ctx)
+        print("Warning: StreamingSound is deprecated. Use Sound class with streaming=True instead.")
+    
+    def load_stream(self, filename, chunk_size=None, preload_buffers=None):
+        return super().load(filename, streaming=True, chunk_size=chunk_size, preload_buffers=preload_buffers)

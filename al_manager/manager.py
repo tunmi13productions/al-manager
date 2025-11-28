@@ -714,7 +714,7 @@ class Manager:
     # Streaming audio methods
     def create_streaming_sound(self, ctx=None):
         """Create a new streaming sound instance."""
-        from sound import StreamingSound
+        from .sound import StreamingSound
         return StreamingSound(ctx or self.ctx)
     
     def play_streaming(self, filename: str, loop: bool = False, volume: float = 1.0, 
