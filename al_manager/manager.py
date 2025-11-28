@@ -193,6 +193,9 @@ class Manager:
         # Automatic cleanup counter
         self.play_count = 0
         self.auto_cleanup_frequency = 10  # Clean every 10 sound plays
+        
+        # Sound group tracking for automatic cleanup
+        self.sound_groups = set()  # Use set for efficient add/remove operations
     # A quicker way for accessing the listener.
     @property
     def listener(self):
@@ -331,6 +334,14 @@ class Manager:
         if self.play_count >= self.auto_cleanup_frequency:
             self.clean()
             self.sound_pool.cleanup_finished_sounds()
+            
+            # Clean up all registered sound groups automatically
+            for sound_group in self.sound_groups.copy():  # Use copy to avoid modification during iteration
+                try:
+                    sound_group.cleanup_finished_sounds()
+                except Exception as e:
+                    print(f"Warning: Error auto-cleaning sound group {getattr(sound_group, 'entity_id', 'unknown')}: {e}")
+            
             self.play_count = 0
 
     # Play a positioned source.
@@ -438,14 +449,30 @@ class Manager:
         return True
 
     # Pause all items.
-    def pause_all(self):
+    def pause_all(self, include_soundgroups=True):
         for i in self.items:
             i.pause()
+        
+        # Pause all registered sound groups if requested
+        if include_soundgroups:
+            for sound_group in self.sound_groups:
+                try:
+                    sound_group.pause_all_sounds()
+                except Exception as e:
+                    print(f"Warning: Error pausing sound group {getattr(sound_group, 'entity_id', 'unknown')}: {e}")
 
     # Resume all items.
-    def resume_all(self):
+    def resume_all(self, include_soundgroups=True):
         for i in self.items:
             i.play()
+        
+        # Resume all registered sound groups if requested
+        if include_soundgroups:
+            for sound_group in self.sound_groups:
+                try:
+                    sound_group.resume_all_sounds()
+                except Exception as e:
+                    print(f"Warning: Error resuming sound group {getattr(sound_group, 'entity_id', 'unknown')}: {e}")
 
     # Do some cleaning!
     def clean(self):
@@ -479,7 +506,7 @@ class Manager:
         return False
 
     # Destroy all items.
-    def destroy_all(self):
+    def destroy_all(self, include_soundgroups=True):
         """Destroy all sounds and clean up resources."""
         destroyed_count = 0
         
@@ -496,6 +523,14 @@ class Manager:
         # Destroy all oneshot sounds
         self.sound_pool.stop_all_oneshots()
         
+        # Destroy all registered sound groups if requested
+        if include_soundgroups:
+            for sound_group in self.sound_groups.copy():  # Use copy to avoid modification during iteration
+                try:
+                    sound_group.destroy()
+                except Exception as e:
+                    print(f"Warning: Error destroying sound group {getattr(sound_group, 'entity_id', 'unknown')}: {e}")
+        
         print(f"Destroyed {destroyed_count} regular sounds and all oneshot sounds")
         return destroyed_count > 0
         
@@ -503,6 +538,13 @@ class Manager:
         """Clean up all finished sounds manually."""
         self.clean()
         self.sound_pool.cleanup_finished_sounds()
+        
+        # Clean up all registered sound groups
+        for sound_group in self.sound_groups.copy():  # Use copy to avoid modification during iteration
+            try:
+                sound_group.cleanup_finished_sounds()
+            except Exception as e:
+                print(f"Warning: Error cleaning up sound group {getattr(sound_group, 'entity_id', 'unknown')}: {e}")
         
     def get_memory_stats(self):
         """Get memory usage statistics."""
@@ -513,8 +555,17 @@ class Manager:
             'regular_sounds': len(self.items),
             'active_regular': active_regular,
             'oneshot_stats': oneshot_stats,
-            'total_sounds': len(self.items) + oneshot_stats['total_active']
+            'total_sounds': len(self.items) + oneshot_stats['total_active'],
+            'registered_sound_groups': len(self.sound_groups)
         }
+    
+    def register_sound_group(self, sound_group):
+        """Register a sound group for automatic cleanup."""
+        self.sound_groups.add(sound_group)
+    
+    def unregister_sound_group(self, sound_group):
+        """Unregister a sound group from automatic cleanup."""
+        self.sound_groups.discard(sound_group)  # discard won't raise if not found
     
     # Enhanced audio effects methods for the manager
     def create_global_effect(self, name: str, effect_type: str, **kwargs) -> AudioEffect:

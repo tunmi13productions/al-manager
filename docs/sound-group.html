@@ -235,6 +235,16 @@ player_sounds.play_sound("hurt", stop_existing=True)</code></pre>
                     <p>Stop all currently playing sounds in the group.</p>
                 </div>
 
+                <div class="method">
+                    <h3>pause_all_sounds()</h3>
+                    <p>Pause all currently playing sounds in this group.</p>
+                </div>
+
+                <div class="method">
+                    <h3>resume_all_sounds()</h3>
+                    <p>Resume all currently paused sounds in this group.</p>
+                </div>
+
                 <h3>State Management</h3>
                 <div class="method">
                     <h3>enable() / disable()</h3>
@@ -290,7 +300,7 @@ player_sounds.apply_environmental_effect("cave_echo")
                     <h3>cleanup_finished_sounds()</h3>
                     <p>Remove finished sounds from the active list to prevent memory leaks.</p>
                     <div class="method-details">
-                        <p><strong>Note:</strong> Should be called periodically in game loops.</p>
+                        <p><strong>Note:</strong> <em>Fully automatic cleanup</em> - The manager automatically cleans all sound groups every 10 sound plays. This method is available for manual cleanup if performance issues arise or immediate cleanup is needed.</p>
                     </div>
                 </div>
 
@@ -299,6 +309,14 @@ player_sounds.apply_environmental_effect("cave_echo")
                     <p>Get detailed information about the sound group.</p>
                     <div class="method-details">
                         <p><strong>Returns:</strong> Dictionary with group status, sound count, active sounds, etc.</p>
+                    </div>
+                </div>
+
+                <div class="method">
+                    <h3>destroy()</h3>
+                    <p>Properly destroy this sound group and clean up all resources.</p>
+                    <div class="method-details">
+                        <p><strong>Note:</strong> Stops all active sounds, unregisters from manager, and clears all references. Call when the entity is removed from the game.</p>
                     </div>
                 </div>
 
@@ -592,12 +610,16 @@ class GameAudioSystem:
         return group
     
     def update(self, dt):
-        # Update all sound groups
-        for group in self.sound_groups.values():
-            group.cleanup_finished_sounds()
-        
-        # Update manager
-        self.manager.clean()
+        # No cleanup needed! Manager automatically cleans everything every 10 sound plays
+        # Optional: Call self.manager.cleanup_finished_sounds() if immediate cleanup needed
+        pass
+    
+    def destroy_entity(self, entity_id):
+        """Remove an entity and properly clean up its sound group."""
+        if entity_id in self.sound_groups:
+            sound_group = self.sound_groups[entity_id]
+            sound_group.destroy()  # Properly clean up the sound group
+            del self.sound_groups[entity_id]
     
     def set_environment(self, environment_type):
         if environment_type == "indoor":
@@ -664,19 +686,22 @@ while game_running:
             <section class="section">
                 <h2>Best Practices</h2>
                 <ul>
-                    <li><strong>Entity Lifecycle:</strong> Create sound groups when entities spawn, destroy when they despawn</li>
+                    <li><strong>Entity Lifecycle:</strong> Create sound groups when entities spawn, call destroy() when they despawn</li>
                     <li><strong>Position Updates:</strong> Use callbacks for automatic position tracking rather than manual updates</li>
-                    <li><strong>Memory Management:</strong> Call cleanup_finished_sounds() regularly to prevent memory leaks</li>
+                    <li><strong>Memory Management:</strong> Fully automatic - the manager handles all cleanup every 10 sound plays. Manual cleanup calls available if needed</li>
                     <li><strong>Effect Sharing:</strong> Use global effects for environmental processing across multiple groups</li>
                     <li><strong>Performance:</strong> Limit concurrent sounds per group for distant or less important entities</li>
                     <li><strong>Variations:</strong> Add multiple variations of common sounds (footsteps, attacks) for realism</li>
                     <li><strong>State Integration:</strong> Tie sound group properties to game state (health, combat mode, etc.)</li>
                     <li><strong>Priority System:</strong> Implement sound priorities to handle audio overload situations</li>
+                    <li><strong>Proper Cleanup:</strong> Always call sound_group.destroy() when removing entities to prevent memory leaks</li>
                 </ul>
 
-                <div class="warning">
-                    <strong>Memory Consideration:</strong> Sound groups maintain references to active sounds. 
-                    Regular cleanup and proper lifecycle management are important for preventing memory leaks in long-running games.
+                <div class="info">
+                    <strong>Automatic Cleanup:</strong> Sound groups automatically register with the manager for cleanup. 
+                    The manager performs automatic cleanup every 10 sound plays, cleaning all sound groups simultaneously. 
+                    Manual cleanup methods are available if immediate cleanup is needed or performance issues arise. 
+                    Just ensure you call sound_group.destroy() when entities are removed from the game.
                 </div>
             </section>
         </div>
